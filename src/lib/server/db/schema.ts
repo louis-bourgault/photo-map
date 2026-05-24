@@ -1,8 +1,8 @@
-import { pgTable, serial, integer, text, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, serial, integer, text, boolean, json, uuid } from 'drizzle-orm/pg-core';
 import { user, session, account, verification } from './auth.schema';
 
 export const project = pgTable('project', {
-  id: serial('id').primaryKey(),
+    id: uuid('id').notNull().unique(),
   name: text('name').notNull(),
   description: text('description'),
   public: boolean('public').default(false).notNull(),
@@ -11,4 +11,14 @@ export const project = pgTable('project', {
 	.references(() => user.id, { onDelete: 'cascade' }),
 });
 
+export const photo = pgTable("photo", {
+    id: serial('id').primaryKey(),
+    projectID: uuid('project_id')
+        .notNull()
+        .references(() => project.id, { onDelete: 'cascade' }),
+    filename: text('filename').notNull(),
+    exif: json('exif'),
+    latitude: text('latitude'),
+    longitude: text('longitude'),
+})
 export *  from './auth.schema';

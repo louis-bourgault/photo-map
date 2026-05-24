@@ -2,6 +2,9 @@
 	import { enhance } from '$app/forms';
 	import type { PageServerData } from './$types';
 	import * as Card from '$lib/components/ui/card';
+	import * as Dialog from "$lib/components/ui/dialog/index.js";
+	import { Button } from '$lib/components/ui/button/index.js';
+	import {Input} from '$lib/components/ui/input/index.js';
 
 	let { data }: { data: PageServerData } = $props();
 </script>
@@ -9,11 +12,28 @@
 <h1>Hi, {data.user.name}!</h1>
 <p>Your user ID is {data.user.id}.</p>
 <form method="post" action="?/signOut" use:enhance>
-	<button class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">Sign out</button>
+	<Button>Sign out</Button>
 </form>
 <div class="p-4">
 
 	<h1 class='font-heading text-3xl '>Projects</h1>
+	<Dialog.Root>
+		<Dialog.Trigger>Create New Project</Dialog.Trigger>
+		<Dialog.Content>
+		  <Dialog.Header>
+			<Dialog.Title>Create New Project</Dialog.Title>
+			<Dialog.Description>
+			  Create a new project for photos.
+			</Dialog.Description>
+		  </Dialog.Header>
+		  <form method="post" action="?/createProject" class="grid w-full items-center gap-4 py-4">
+			<Input name="name" placeholder="Project Name" required />
+			<Button type="submit">Create</Button>
+		  </form>
+		</Dialog.Content>
+		
+	  </Dialog.Root>
+	  
 	<div class='grid-cols-3 mt-4 grid gap-4'>
 		{#each data.projects as project}
 		<Card.Root>
@@ -25,10 +45,11 @@
 				<p>Created at: {new Date(project.createdAt).toLocaleDateString()}</p>
 			</Card.Content>
 			<Card.Footer>
-				<a href={`/dashboard/projects/${project.id}`} class="text-blue-600 hover:underline">View Project</a>
+				<a href={`/dashboard/project/${project.id}`} class="text-blue-600 hover:underline">View Project</a>
 			</Card.Footer>
 		</Card.Root>
 		{/each}
+		
 	</div>
 </div>
 
