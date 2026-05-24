@@ -6,7 +6,7 @@
 	import mapboxgl from '$lib/mapbox-gl';
 	import 'mapbox-gl/dist/mapbox-gl.css';
 	let {children, data} = $props();
-	import {photos, initPhotos} from '$lib/mapstore.svelte.js';
+	import {photos, initPhotos, setProjectID} from '$lib/mapstore.svelte.js';
   
 	let mapContainer!: HTMLDivElement;
 	let map: { remove: () => void; resize: () => void } | undefined;
@@ -30,6 +30,7 @@
 	  let active = true;
   
 	  if (!active) return;
+	  setProjectID(data.project.id);
   
 	  mapboxgl.accessToken = PUBLIC_MAPBOX_ACCESS_TOKEN;
   
@@ -43,6 +44,7 @@
 	  requestAnimationFrame(() => map?.resize());
   
 	  initPhotos(data.processedPhotos);
+	  
 	  return () => {
 		active = false;
 		map?.remove();

@@ -5,10 +5,10 @@ import {project, photo} from '$lib/server/db/schema';
 import { auth } from '$lib/server/auth';
 import {eq} from 'drizzle-orm';
 import type {Photo} from "$lib/mapstore.svelte.js";
-import {createPresignedURL} from '$lib/server/s3';
+import {createPresignedDownloadURL} from '$lib/server/s3';
 
 async function getPhotoInfo(photo: any, projectID: string): Promise<Photo> { //the original photo is as stored in the database, could possibly define this later (not as any)
-    const url = await createPresignedURL(`/photos/${projectID}/${photo.filename}/thumb`);
+    const url = await createPresignedDownloadURL(`photos/${projectID}/${photo.filename}/thumb`);
     return {
         id: photo.id,
         filename: photo.filename,
