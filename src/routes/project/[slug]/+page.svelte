@@ -1,9 +1,12 @@
 <script lang="ts">
+  import {getGPSandExif} from '$lib/getGPS.js'
   import { enhance } from '$app/forms';
   import * as Tabs from "$lib/components/ui/tabs/index.js";
   import { Button } from '$lib/components/ui/button/index.js';
   let { data } = $props();
-  import { photos } from '$lib/mapstore.svelte.js';
+  import { photos, lightBox, openLightBox, closeLightBox } from '$lib/mapstore.svelte.js';
+
+  let noExifError = $state(false);
 
   let fileInput = $state<HTMLInputElement | null>(null);
   let selectedFile: File | null = $state(null);
@@ -65,15 +68,24 @@
     }
   }
 
-  const uploadFiles = ({ formData, cancel }: { formData: FormData; cancel: () => void }) => {
+  const uploadFiles = async ({ formData, cancel }: { formData: FormData; cancel: () => void }) => {
     const file = selectedFile;
     if (!file) {
       cancel();
       return;
     }
-    formData.set('exif', '{}');
-    formData.set('latitude', '');
-    formData.set('longitude', '');
+    let exifdata = await getGPSandExif(file);
+    if (!exifdata) {
+      noExifError = true;
+      fileInput?.value && (fileInput.value = '');
+      setTimeout(() => noExifError = false, 5000);
+      cancel();
+      return;
+    }
+
+    formData.set('exif', JSON.stringify(exifdata.exif));
+    formData.set('latitude', exifdata.latitude);
+    formData.set('longitude', exifdata.longitude);
     formData.set('filename', file.name);
     formData.set('projectID', data.project.id);
 
@@ -110,13 +122,20 @@
         }
         console.log('Upload successful, updating UI with new photo');
 
+        const resp = await fetch('/api/presigned?res=thumb', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ projectID: data.project.id, filename: file.name }),
+        });
+        const { url } = await resp.json();
+
         photos.unshift({
           id: photoID,
           filename: file.name,
           exif: {},
           latitude: '',
           longitude: '',
-          thumbnailUrl: thumbURL, //NO this is only an upload url, have to do stuff to get the real url TODO
+          thumbnailUrl: url, 
           fullsizeUrl: null,
         });
 
@@ -132,6 +151,15 @@
   };
  </script>
 
+ {#if lightBox.open && lightBox.selectedPhoto}
+  <div class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+    <Button class="absolute top-4 right-4" variant="secondary" onclick={closeLightBox}>Close</Button>
+    <img src={lightBox.selectedPhoto.fullsizeUrl || lightBox.selectedPhoto.thumbnailUrl} alt={lightBox.selectedPhoto.filename} class="max-w-full max-h-full" />
+  </div>
+ {/if}
+
+
+
 <div class="p-2">
 <Tabs.Root value="photos" class="w-full">
  <Tabs.List class='w-full'>
@@ -139,9 +167,17 @@
   <Tabs.Trigger value="stories">Stories</Tabs.Trigger>
  </Tabs.List>
  <Tabs.Content value="photos">
+  <div class='grid grid-cols-4 gap-2'>
+  {#if noExifError}
+    <p class='text-red-500 col-span-4'>There wasn't any gps information in that file, so it wasn't uploaded</p>
+  {/if}
   {#each photos as photo}
-    <p>{photo.filename}</p>
+    <button type='button' onclick={() => {openLightBox(photo)}}>
+
+      <img src={photo.thumbnailUrl} alt={photo.filename} class='object-cover aspect-square'/>
+    </button>
   {/each}
+  </div>
   {#if data.user.id === data.project.userID}
     <p>You own this project!</p>
     <form method="post" action="?/uploadFileURLs" enctype="multipart/form-data" use:enhance={uploadFiles}>

@@ -1,18 +1,22 @@
 <script lang="ts">
+	
 	import * as Resizable from "$lib/components/ui/resizable/index.js";
 	import ModeSwitch from '$lib/components/mode-switch.svelte';
+	import Marker from '$lib/components/marker.svelte';
 	import { onMount } from 'svelte';
 	import { PUBLIC_MAPBOX_ACCESS_TOKEN } from '$env/static/public';
 	import mapboxgl from '$lib/mapbox-gl';
 	import 'mapbox-gl/dist/mapbox-gl.css';
 	let {children, data} = $props();
-	import {photos, initPhotos, setProjectID} from '$lib/mapstore.svelte.js';
+	import {photos, initPhotos, setProjectID, openLightBox} from '$lib/mapstore.svelte.js';
   
 	let mapContainer!: HTMLDivElement;
 	let map: { remove: () => void; resize: () => void } | undefined;
+	
   
 	let mapWidth = $state();
 	let resizeCallback:any;
+
   
 	$effect(() => {
 	  if (mapWidth) {
@@ -21,7 +25,7 @@
 		} catch (e) {
 		  console.log('No resize callback to clear');
 		}
-		resizeCallback = setTimeout(() => {map?.resize}, 10);
+		resizeCallback = setTimeout(() => {map?.resize}, 50);
 		map?.resize();
 	  }
 	});
@@ -75,3 +79,7 @@
 	</div>
   
   
+
+{#each photos as photo, i}
+ 	<Marker long={photo.longitude} lat={photo.latitude} thumb={photo.thumbnailUrl} map={map} alt={photo.filename} onclick={() => {openLightBox(photo)}}/>
+{/each}
