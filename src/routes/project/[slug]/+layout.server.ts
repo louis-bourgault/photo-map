@@ -1,7 +1,7 @@
 import { redirect, error } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import {db} from '$lib/server/db';
-import {project, photo} from '$lib/server/db/schema';
+import {project, photo, story} from '$lib/server/db/schema';
 import { auth } from '$lib/server/auth';
 import {eq} from 'drizzle-orm';
 import type {Photo} from "$lib/mapstore.svelte.js";
@@ -25,6 +25,7 @@ export const load: LayoutServerLoad = async (event) => {
     if (projectDetails.length === 0) {
         throw error(404, 'Project not found');
     }
+    const storyDetails = await db.select().from(story).where(eq(story.projectID, projectDetails[0].id)).execute();
     const photos = await db.select().from(photo).where(eq(photo.projectID, projectDetails[0].id)).execute();
     let promises: Array<Promise<Photo>> = [];
     for (const photo of photos) {
@@ -33,5 +34,5 @@ export const load: LayoutServerLoad = async (event) => {
     const processedPhotos: Photo[] = await Promise.all(promises);
 
 
-    return { user: event.locals.user, project: projectDetails[0], processedPhotos };
+    return { user: event.locals.user, project: projectDetails[0], processedPhotos, stories: storyDetails };
 };

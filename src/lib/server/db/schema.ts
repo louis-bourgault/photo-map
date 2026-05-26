@@ -1,5 +1,5 @@
-import { pgTable, serial, integer, text, boolean, json, uuid } from 'drizzle-orm/pg-core';
-import { user, session, account, verification } from './auth.schema';
+import { pgTable, serial, text, boolean, json, uuid, integer } from 'drizzle-orm/pg-core';
+import { user } from './auth.schema';
 
 export const project = pgTable('project', {
     id: uuid('id').notNull().unique(),
@@ -21,4 +21,30 @@ export const photo = pgTable("photo", {
     latitude: text('latitude'),
     longitude: text('longitude'),
 })
+
+export const story = pgTable("story", {
+    id: uuid('id').notNull().unique(),
+    projectID: uuid('project_id')
+        .notNull()
+        .references(() => project.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    slug: text('slug').notNull(),
+})
+
+export const storyItem = pgTable("story_item", {
+    id: serial('id').primaryKey(),
+    story: uuid('story_id')
+        .notNull()
+        .references(() => story.id, { onDelete: 'cascade' }),
+    photo: serial('photo_id')
+        .references(() => photo.id, { onDelete: 'cascade' }),
+    photoCaption: text('photo_caption'),
+    markdownContent: text('markdown_content'),
+    indexInStory: integer('index_in_story').notNull(), 
+    //basic indexing for now, make it sparse if there's a problem later.
+    //photo, photocaption and markdown content are all optional, but at least one must be provided.
+
+}
+)
+
 export *  from './auth.schema';

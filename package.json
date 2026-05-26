@@ -61,6 +61,7 @@
 		"@aws-sdk/s3-request-presigner": "^3.1053.0",
 		"exifreader": "^4.39.1",
 		"mapbox-gl": "^3.24.0",
+		"marked": "^18.0.4",
 		"mode-watcher": "^1.1.0"
 	}
 }

@@ -4,7 +4,9 @@
   import * as Tabs from "$lib/components/ui/tabs/index.js";
   import { Button } from '$lib/components/ui/button/index.js';
   let { data } = $props();
-  import { photos, lightBox, openLightBox, closeLightBox } from '$lib/mapstore.svelte.js';
+  import { photos, lightBox, openLightBox, closeLightBox, initStories } from '$lib/mapstore.svelte.js';
+  import * as Dialog from '$lib/components/ui/dialog/index.js';
+	import Input from '$lib/components/ui/input/input.svelte';
 
   let noExifError = $state(false);
 
@@ -17,6 +19,8 @@
     const target = event.currentTarget as HTMLInputElement;
     selectedFile = target.files?.[0] ?? null;
   }
+
+  
 
   async function createThumbnail(file: File, maxSize = 512) {
     if (!file.type.startsWith('image/')) {
@@ -187,7 +191,27 @@
     
   {/if}
  </Tabs.Content>
- <Tabs.Content value="stories">Stories aint ready yet.</Tabs.Content>
+ <Tabs.Content value="stories">
+  <div class='flex flex-col gap-4'>
+    <h2 class='text-2xl font-bold'>Stories</h2>
+    <Dialog.Root>
+      <Dialog.Trigger>Create Story</Dialog.Trigger>
+      <Dialog.Content>
+      <Dialog.Header>
+        <Dialog.Title>Create a new story</Dialog.Title>
+        <Dialog.Description>
+          Start a new story to group photos together and add captions.
+        </Dialog.Description>
+      </Dialog.Header>
+      <form method="post" action="?/createStory" use:enhance>
+        <Input type='text' name='title' placeholder='Story Title' class='mb-4'/>
+        <Button type='submit'>Create</Button>
+      </form>
+      </Dialog.Content>
+       
+    </Dialog.Root>
+  </div>
+ </Tabs.Content>
 </Tabs.Root>
 </div>
 

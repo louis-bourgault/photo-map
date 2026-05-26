@@ -45,7 +45,7 @@
 			</Card.Content>
 			<Card.Footer>
 				<div class='flex justify-between flex-row w-full gap-2'>
-					<a href={`/dashboard/project/${project.id}/`} class="text-blue-600 hover:underline">View Project</a>
+					<a href={`/project/${project.id}/`} class="text-blue-600 hover:underline">View Project</a>
 					<form method="post" action="?/deleteProject" use:enhance class="m-0">
 						<input type="hidden" name="projectId" value={project.id} />
 						<Button type="submit" variant='outline'>Delete</Button>

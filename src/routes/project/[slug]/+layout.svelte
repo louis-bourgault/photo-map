@@ -8,7 +8,7 @@
 	import mapboxgl from '$lib/mapbox-gl';
 	import 'mapbox-gl/dist/mapbox-gl.css';
 	let {children, data} = $props();
-	import {photos, initPhotos, setProjectID, openLightBox} from '$lib/mapstore.svelte.js';
+	import {photos, initPhotos, setProjectID, openLightBox, initStories} from '$lib/mapstore.svelte.js';
   
 	let mapContainer!: HTMLDivElement;
 	let map: { remove: () => void; resize: () => void } | undefined;
@@ -48,6 +48,7 @@
 	  requestAnimationFrame(() => map?.resize());
   
 	  initPhotos(data.processedPhotos);
+	  initStories(data.stories);
 	  
 	  return () => {
 		active = false;

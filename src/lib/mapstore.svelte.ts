@@ -1,5 +1,6 @@
 export let photos: Array<Photo> = $state([]);
 export let projectID: string = "";
+export let stories: Array<{ id: string; title: string; slug: string, projectID: string }> = $state([]);
 export let lightBox = $state({
     open: false,
     selectedPhoto: null as Photo | null,
@@ -23,6 +24,10 @@ export function openLightBox(photo: Photo) {
     if (!photo.fullsizeUrl) {
         getFullSizeUrl(photo);
     }
+}
+
+export function initStories(stories: Array<{ id: string; title: string; slug: string, projectID: string }>) {
+    stories.splice(0, stories.length, ...stories);
 }
 
 export function closeLightBox() {

@@ -1,8 +1,9 @@
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
-import { project, photo } from '$lib/server/db/schema';
+import { project, photo, story } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import type { Photo } from '$lib/mapstore.svelte.js';
+import {redirect} from '@sveltejs/kit';
 import { createPresignedDownloadURL, createPresignedUploadURL } from '$lib/server/s3';
 
 export const load: PageServerLoad = (event) => {
@@ -33,5 +34,24 @@ export const actions = {
         const fullURL = await createPresignedUploadURL(`photos/${projectID}/${filename}/full`);
 
         return { thumbURL, fullURL, photoID: photoRecord.id };
+    },
+    createStory: async (event) => {
+        const formData = await event.request.formData();
+        const title = formData.get('title') as string;
+        const projectID = event.params.slug; 
+        const user = event.locals.user;
+
+        const [proj] = await db.select().from(project).where(eq(project.id, projectID));
+        if (!proj || proj.userID !== user.id) {
+            return { error: 'Unauthorized' };
+        }
+        const slug = title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
+        await db.insert(story).values({
+            id: crypto.randomUUID(),
+            projectID,
+            title,
+            slug,
+        });
+        redirect(303, `/project/${projectID}/${slug}`);
     }
 }
