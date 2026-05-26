@@ -47,6 +47,13 @@
 		});
 	});
 
+	function getPhotoById(id: number | null) {
+		if (!id) {
+			return undefined;
+		}
+		return photos.find((photo) => photo.id === id);
+	}
+
 	function moveCardUp(cardIndex: number) {
 		if (cardIndex > 0) {
 			storyBlocks[cardIndex - 1].indexInStory = cardIndex;
@@ -113,37 +120,51 @@
 			saving = false;
 		}
     }
+
+    $inspect(selectedChangePhotoID);
 </script>
 
-<div class="p-2">
-	<a href={`/project/${page.params.slug}`}>← Back to project</a>
-	<p>welcome to the story view</p>
-    <Button onclick={saveStory} disabled={saving}>{saving ? 'Saving...' : 'Save Story'}</Button>
+<div class="h-[calc(100dvh-4rem)] overflow-y-auto p-4 sm:p-6">
+	<div class="mx-auto flex w-full max-w-3xl flex-col gap-4">
+		<div class="flex flex-wrap items-center justify-between gap-3">
+			<a href={`/project/${page.params.slug}`} class="text-sm text-muted-foreground hover:text-foreground">← Back to project</a>
+			<Button onclick={saveStory} disabled={saving} class="min-w-[140px]">{saving ? 'Saving...' : 'Save Story'}</Button>
+		</div>
+		<p class="text-sm text-muted-foreground">welcome to the story view</p>
 	{#each storyBlocks as item, index}
-		<Card.Root>
+		<Card.Root class="w-full">
 			{#if item.itemType === 'photo'}
 				<Card.Header>
 					<Card.Title>Image</Card.Title>
 				</Card.Header>
 				<Card.Content>
-				{#if photos.find((p) => p.id === item.photo) && item.photo}
+				{#if getPhotoById(item.photo) && item.photo}
 					<img
-						src={photos.find((p) => p.id === item.photo)?.fullsizeUrl}
+						src={getPhotoById(item.photo)?.fullsizeUrl ?? getPhotoById(item.photo)?.thumbnailUrl}
 						alt="a thing"
-						class="mb-4"
+						class="mb-4 w-full rounded-md border border-border/60 bg-muted/20 object-contain"
 					/>
                 {:else}
                     <p class="mb-4 text-sm text-muted-foreground">Photo not found, add one!</p>
                 {/if}
 					<Dialog.Root>
-						<Dialog.Trigger>{item.photo ? 'Change' : 'Add'} Photo</Dialog.Trigger>
+						<Dialog.Trigger>
+							<Button variant="outline" size="sm">{item.photo ? 'Change' : 'Add'} Photo</Button>
+						</Dialog.Trigger>
 						<Dialog.Content>
 							<Dialog.Header>
 								<Dialog.Title>{item.photo ? 'Change' : 'Add'}</Dialog.Title>
 							</Dialog.Header>
 							<div class="grid gap-4 py-4">
 								{#each photos as photo}
-									<button type="button" onclick={() => {selectedChangePhotoID = photo.id; getFullSizeUrl(photo);}} class="rounded-md border-2 border-transparent p-1 hover:border-primary {selectedChangePhotoID === photo.id ? 'border-primary' : ''}">
+									<button
+										type="button"
+										onclick={() => {
+											selectedChangePhotoID = photo.id;
+											getFullSizeUrl(photo);
+										}}
+										class="rounded-md border-2 p-1 hover:border-primary {selectedChangePhotoID === photo.id ? 'border-primary' : ''}"
+									>
 										<img
 											src={photo.thumbnailUrl}
 											alt={photo.filename}
@@ -152,21 +173,28 @@
 									</button>
 								{/each}
 							</div>
+							<Dialog.Footer>
+                            <Dialog.Close>
+
+								<Button
+									variant="outline"
+									onclick={() => {
+                                        if (selectedChangePhotoID) {
+                                            item.photo = selectedChangePhotoID;
+											const selectedPhoto = getPhotoById(selectedChangePhotoID);
+											if (selectedPhoto) {
+                                                getFullSizeUrl(selectedPhoto);
+											}
+											selectedChangePhotoID = null;
+										}
+									}}
+									disabled={!selectedChangePhotoID}
+								>
+									Save
+								</Button>
+                            </Dialog.Close>
+							</Dialog.Footer>
 						</Dialog.Content>
-                        <Dialog.Footer>
-                            <Button
-                                variant="outline"
-                                onclick={() => {
-                                    if (selectedChangePhotoID) {
-										item.photo = selectedChangePhotoID;
-                                        selectedChangePhotoID = null;
-                                    }
-                                }}
-                                disabled={!selectedChangePhotoID}
-                            >
-                                Save
-                            </Button>
-                        </Dialog.Footer>
 					</Dialog.Root>
 					<Label for="photoCaption">Photo caption</Label>
 					<Input
@@ -178,7 +206,7 @@
 			{:else if item.itemType === 'text'}
 				<Textarea bind:value={item.markdownContent} class="mb-4 h-40 w-full" />
 			{/if}
-			<Card.Footer>
+			<Card.Footer class="flex flex-wrap gap-2">
 				<Button
 					variant="outline"
 					size="sm"
@@ -203,8 +231,14 @@
 			</Card.Footer>
 		</Card.Root>
 	{/each}
-	<div class="mt-4 flex gap-2">
-		<Button onclick={addTextCard}>Add Text Component</Button>
-		<Button onclick={addPhotoCard} variant="outline">Add Photo Component</Button>
+		<div class="mt-2 flex flex-wrap gap-2">
+			<Button onclick={addTextCard}>Add Text Component</Button>
+			<Button onclick={addPhotoCard} variant="outline">Add Photo Component</Button>
+		</div>
 	</div>
 </div>
+
+<br>
+<br>
+<br>
+<br>
