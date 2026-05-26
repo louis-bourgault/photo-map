@@ -7,8 +7,7 @@
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	let { data } = $props();
 	let storyBlocks = $state(data.storyBlocks);
-    let selectedChangePhotoID: string | null = $state(null);
-	import { marked } from 'marked';
+    let selectedChangePhotoID: number | null = $state(null);
 	import Input from '$lib/components/ui/input/input.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import Label from '$lib/components/ui/label/label.svelte';
@@ -44,32 +43,80 @@
 	function deleteCard(cardIndex: number) {
 		storyBlocks.splice(cardIndex, 1);
 	}
+
+    function addTextCard() {
+        storyBlocks.push({
+            story_item: {
+                itemType: 'text',
+                markdownContent: '',
+                indexInStory: storyBlocks.length,
+                photo: null,
+                photoCaption: '',
+                id: crypto.randomUUID(),
+                story: data.storyDetails.id,
+            }
+            
+        });
+    }
+
+    function addPhotoCard() {
+        storyBlocks.push({
+            story_item: {
+                itemType: 'photo',
+                photo: null,
+                photoCaption: '',
+                indexInStory: storyBlocks.length,
+                markdownContent: '',
+                id: crypto.randomUUID(),
+            }
+        });
+    }
+
+    let saving = $state(false);
+
+    async function saveStory() {
+        storyBlocks.forEach((block, index) => {
+            block.story_item.indexInStory = index;
+        });
+        await fetch(`/project/${page.params.slug}/${page.params.storyID}/edit/save/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ storyBlocks })
+        });
+    }
 </script>
 
 <div class="p-2">
 	<a href={`/project/${page.params.slug}`}>← Back to project</a>
 	<p>welcome to the story view</p>
+    <Button onclick={saveStory} disabled={saving}>{saving ? 'Saving...' : 'Save Story'}</Button>
 	{#each storyBlocks as item, index}
 		<Card.Root>
-			{#if item.story_item.photo}
+			{#if item.story_item.itemType === 'photo'}
 				<Card.Header>
 					<Card.Title>Image</Card.Title>
 				</Card.Header>
 				<Card.Content>
+                {#if photos.find((p) => p.id === item.story_item.photo) && item.story_item.photo}
 					<img
 						src={photos.find((p) => p.id === item.story_item.photo)?.fullsizeUrl}
 						alt="a thing"
 						class="mb-4"
 					/>
+                {:else}
+                    <p class="mb-4 text-sm text-muted-foreground">Photo not found, add one!</p>
+                {/if}
 					<Dialog.Root>
-						<Dialog.Trigger>Change Photo</Dialog.Trigger>
+						<Dialog.Trigger>{item.story_item.photo ? 'Change' : 'Add'} Photo</Dialog.Trigger>
 						<Dialog.Content>
 							<Dialog.Header>
-								<Dialog.Title>Change Photo</Dialog.Title>
+								<Dialog.Title>{item.story_item.photo ? 'Change' : 'Add'}</Dialog.Title>
 							</Dialog.Header>
 							<div class="grid gap-4 py-4">
 								{#each photos as photo}
-									<button type="button" onclick={() => {selectedChangePhotoID; getFullSizeUrl(photo);}}>
+									<button type="button" onclick={() => {selectedChangePhotoID = photo.id; getFullSizeUrl(photo);}} class="rounded-md border-2 border-transparent p-1 hover:border-primary {selectedChangePhotoID === photo.id ? 'border-primary' : ''}">
 										<img
 											src={photo.thumbnailUrl}
 											alt={photo.filename}
@@ -79,6 +126,20 @@
 								{/each}
 							</div>
 						</Dialog.Content>
+                        <Dialog.Footer>
+                            <Button
+                                variant="outline"
+                                onclick={() => {
+                                    if (selectedChangePhotoID) {
+                                        item.story_item.photo = selectedChangePhotoID;
+                                        selectedChangePhotoID = null;
+                                    }
+                                }}
+                                disabled={!selectedChangePhotoID}
+                            >
+                                Save
+                            </Button>
+                        </Dialog.Footer>
 					</Dialog.Root>
 					<Label for="photoCaption">Photo caption</Label>
 					<Input
@@ -115,4 +176,5 @@
 			</Card.Footer>
 		</Card.Root>
 	{/each}
+    <Button>Add Text Component</Button>
 </div>

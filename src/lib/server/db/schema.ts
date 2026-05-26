@@ -32,19 +32,19 @@ export const story = pgTable("story", {
 })
 
 export const storyItem = pgTable("story_item", {
-    id: serial('id').primaryKey(),
+    id: uuid('id').notNull().unique(),
     story: uuid('story_id')
         .notNull()
         .references(() => story.id, { onDelete: 'cascade' }),
-    photo: serial('photo_id')
+    photo: integer('photo_id')
         .references(() => photo.id, { onDelete: 'cascade' }),
     photoCaption: text('photo_caption'),
     markdownContent: text('markdown_content'),
     indexInStory: integer('index_in_story').notNull(), 
     //basic indexing for now, make it sparse if there's a problem later.
     //photo, photocaption and markdown content are all optional, but at least one must be provided.
+    itemType: text('item_type').notNull(), // 'photo', 'text'
 
-}
-)
+})
 
 export *  from './auth.schema';
