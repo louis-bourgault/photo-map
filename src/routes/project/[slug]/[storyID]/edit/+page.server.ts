@@ -1,8 +1,7 @@
 import { db } from '$lib/server/db';
-import { project, photo, story, storyItem } from '$lib/server/db/schema';
+import { story, storyItem } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
-import { createPresignedDownloadURL } from '$lib/server/s3';
 
 export async function load({ params, locals }) {
     const storyDetails = await db
@@ -13,12 +12,19 @@ export async function load({ params, locals }) {
     if (storyDetails.length === 0) {
         error(404, 'Story not found');
     }
-    let storyBlocks = await db
-        .select()
+    const storyBlocks = await db
+        .select({
+            id: storyItem.id,
+            story: storyItem.story,
+            photo: storyItem.photo,
+            photoCaption: storyItem.photoCaption,
+            markdownContent: storyItem.markdownContent,
+            indexInStory: storyItem.indexInStory,
+            itemType: storyItem.itemType
+        })
         .from(storyItem)
         .where(eq(storyItem.story, storyDetails[0].id))
         .orderBy(storyItem.indexInStory)
-        .leftJoin(photo, eq(storyItem.photo, photo.id))
         .execute();
     
     return { storyDetails: storyDetails[0], storyBlocks };
