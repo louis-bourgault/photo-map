@@ -17,23 +17,44 @@ export const actions = {
         //the main reason for this is that i dont want to kill my vercel bandwidth billing.
         //there might be a problem with ghost entries that never actually get filled with photos. We might want a cron job or something that cleans that up, or a task queue that waits for a bit and then checks.
         const formData = await event.request.formData();
-        const exif = formData.get('exif') as string;
-        const latitude = formData.get('latitude') as string;
-        const longitude = formData.get('longitude') as string;
-        const filename = formData.get('filename') as string;
+        const photosJson = formData.get('photos') as string | null;
         const projectID = formData.get('projectID') as string;
+        if (!photosJson) {
+            return { uploads: [] };
+        }
 
-        const [photoRecord] = await db.insert(photo).values({
-            projectID,
-            filename,
-            exif,
-            latitude,
-            longitude,
-        }).returning({ id: photo.id });
-        const thumbURL = await createPresignedUploadURL(`photos/${projectID}/${filename}/thumb`);
-        const fullURL = await createPresignedUploadURL(`photos/${projectID}/${filename}/full`);
+        const photoPayloads = JSON.parse(photosJson) as Array<{
+            clientIndex: number;
+            exif: string;
+            latitude: string;
+            longitude: string;
+            filename: string;
+        }>;
 
-        return { thumbURL, fullURL, photoID: photoRecord.id };
+        const uploads = await Promise.all(
+            photoPayloads.map(async (payload) => {
+                const [photoRecord] = await db.insert(photo).values({
+                    projectID,
+                    filename: payload.filename,
+                    exif: payload.exif,
+                    latitude: payload.latitude,
+                    longitude: payload.longitude,
+                }).returning({ id: photo.id });
+
+                const thumbURL = await createPresignedUploadURL(`photos/${projectID}/${payload.filename}/thumb`);
+                const fullURL = await createPresignedUploadURL(`photos/${projectID}/${payload.filename}/full`);
+
+                return {
+                    clientIndex: payload.clientIndex,
+                    filename: payload.filename,
+                    thumbURL,
+                    fullURL,
+                    photoID: photoRecord.id,
+                };
+            })
+        );
+
+        return { uploads };
     },
     createStory: async (event) => {
         const formData = await event.request.formData();

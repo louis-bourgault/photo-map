@@ -7,17 +7,18 @@
   import { photos, lightBox, openLightBox, closeLightBox, initStories } from '$lib/mapstore.svelte.js';
   import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import Input from '$lib/components/ui/input/input.svelte';
+	import { page } from '$app/state';
 
   let noExifError = $state(false);
 
   let fileInput = $state<HTMLInputElement | null>(null);
-  let selectedFile: File | null = $state(null);
+  let selectedFiles = $state<File[]>([]);
   let isUploading = $state(false);
-  let uploadButtonDisabled = $derived(!selectedFile || isUploading);
+  let uploadButtonDisabled = $derived(selectedFiles.length === 0 || isUploading);
 
   function handleFileChange(event: Event) {
     const target = event.currentTarget as HTMLInputElement;
-    selectedFile = target.files?.[0] ?? null;
+    selectedFiles = Array.from(target.files ?? []);
   }
 
   
@@ -73,24 +74,44 @@
   }
 
   const uploadFiles = async ({ formData, cancel }: { formData: FormData; cancel: () => void }) => {
-    const file = selectedFile;
-    if (!file) {
+    const files = selectedFiles;
+    if (files.length === 0) {
       cancel();
       return;
     }
-    let exifdata = await getGPSandExif(file);
-    if (!exifdata) {
-      noExifError = true;
+
+    const photoPayloads: Array<{
+      clientIndex: number;
+      exif: string;
+      latitude: string;
+      longitude: string;
+      filename: string;
+    }> = [];
+
+    for (const [index, file] of files.entries()) {
+      const exifdata = await getGPSandExif(file);
+      if (!exifdata) {
+        noExifError = true;
+        continue;
+      }
+
+      photoPayloads.push({
+        clientIndex: index,
+        exif: JSON.stringify(exifdata.exif),
+        latitude: exifdata.latitude,
+        longitude: exifdata.longitude,
+        filename: file.name,
+      });
+    }
+
+    if (photoPayloads.length === 0) {
       fileInput?.value && (fileInput.value = '');
       setTimeout(() => noExifError = false, 5000);
       cancel();
       return;
     }
 
-    formData.set('exif', JSON.stringify(exifdata.exif));
-    formData.set('latitude', exifdata.latitude);
-    formData.set('longitude', exifdata.longitude);
-    formData.set('filename', file.name);
+    formData.set('photos', JSON.stringify(photoPayloads));
     formData.set('projectID', data.project.id);
 
     isUploading = true;
@@ -100,50 +121,62 @@
         if (result.type !== 'success') {
           return;
         }
-
-        const { thumbURL, fullURL, photoID } = result.data as {
-          thumbURL: string;
-          fullURL: string;
-          photoID: number;
+        const { uploads } = result.data as {
+          uploads: Array<{
+            clientIndex: number;
+            thumbURL: string;
+            fullURL: string;
+            photoID: number;
+            filename: string;
+          }>;
         };
 
-        const thumbnailFile = await createThumbnail(file);
-        console.log('Uploading thumbnail and full-size image to S3 with URLs:', thumbURL, fullURL);
+        await Promise.all(
+          uploads.map(async (upload) => {
+            const file = files[upload.clientIndex];
+            if (!file) {
+              return;
+            }
 
-        const [thumbResponse, fullResponse] = await Promise.all([
-          fetch(thumbURL, {
-            method: 'PUT',
-            body: thumbnailFile,
-          }),
-          fetch(fullURL, {
-            method: 'PUT',
-            body: file,
-          }),
-        ]);
+            const thumbnailFile = await createThumbnail(file);
+            console.log('Uploading thumbnail and full-size image to S3 with URLs:', upload.thumbURL, upload.fullURL);
 
-        if (!thumbResponse.ok || !fullResponse.ok) {
-          throw new Error('Upload failed after the server created the photo record');
-        }
-        console.log('Upload successful, updating UI with new photo');
+            const [thumbResponse, fullResponse] = await Promise.all([
+              fetch(upload.thumbURL, {
+                method: 'PUT',
+                body: thumbnailFile,
+              }),
+              fetch(upload.fullURL, {
+                method: 'PUT',
+                body: file,
+              }),
+            ]);
 
-        const resp = await fetch('/api/presigned?res=thumb', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ projectID: data.project.id, filename: file.name }),
-        });
-        const { url } = await resp.json();
+            if (!thumbResponse.ok || !fullResponse.ok) {
+              throw new Error('Upload failed after the server created the photo record');
+            }
+            console.log('Upload successful, updating UI with new photo');
 
-        photos.unshift({
-          id: photoID,
-          filename: file.name,
-          exif: {},
-          latitude: '',
-          longitude: '',
-          thumbnailUrl: url, 
-          fullsizeUrl: null,
-        });
+            const resp = await fetch('/api/presigned?res=thumb', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ projectID: data.project.id, filename: upload.filename }),
+            });
+            const { url } = await resp.json();
 
-        selectedFile = null;
+            photos.unshift({
+              id: upload.photoID,
+              filename: upload.filename,
+              exif: {},
+              latitude: '',
+              longitude: '',
+              thumbnailUrl: url,
+              fullsizeUrl: null,
+            });
+          })
+        );
+
+        selectedFiles = [];
 
         if (fileInput) {
           fileInput.value = '';
@@ -182,10 +215,10 @@
     </button>
   {/each}
   </div>
-  {#if data.user.id === data.project.userID}
+  {#if data.user && data.user.id === data.project.userID}
     <p>You own this project!</p>
     <form method="post" action="?/uploadFileURLs" enctype="multipart/form-data" use:enhance={uploadFiles}>
-      <input bind:this={fileInput} type="file" name="photos" accept="image/*" onchange={handleFileChange} />
+      <input bind:this={fileInput} type="file" name="photos" accept="image/*" multiple onchange={handleFileChange} />
       <Button type='submit' disabled={uploadButtonDisabled}>{isUploading ? 'Uploading...' : 'Upload'}</Button>
     </form>
     
@@ -210,6 +243,13 @@
       </Dialog.Content>
        
     </Dialog.Root>
+  {#each data.stories as story}
+    <div class='border rounded p-4'>
+      <h3 class='text-xl font-semibold'>{story.title}</h3>
+      <Button href={`/project/${page.params.slug}/${story.slug}`}>Go To Story</Button>
+      <Button href={`/project/${page.params.slug}/${story.slug}/edit`} variant='outline'>Edit Story</Button>
+    </div>
+  {/each}
   </div>
  </Tabs.Content>
 </Tabs.Root>

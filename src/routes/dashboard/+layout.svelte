@@ -7,14 +7,12 @@
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 
-<header class="width-full border-b ">
-	<div class="container flex h-16 items-center justify-between p-4">
-		<h1 class="text-lg font-bold">photo-map</h1>
+<header class="w-full border-b p-4">
+	<div class='h-16 flex items-center w-full justify-between'>
+		<a href='/' class='text-xl font-bold'>PhotoMap</a>
 		<nav>
-			<ul class="flex items-center gap-4">
-				<li><a href="/">Home</a></li>
-				<li><a href="/login">Login</a></li>
-			</ul>
+			<a href='/dashboard' class='mr-4'>Dashboard</a>
+			<a href='/about'>About</a>
 		</nav>
 		<ModeSwitch />
 	</div>

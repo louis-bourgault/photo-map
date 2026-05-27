@@ -57,12 +57,9 @@
 	});
   </script>
   <header class="width-full border-b ">
-	<div class="container flex h-16 items-center justify-between p-4">
-		<a class="text-lg font-bold" href="/dashboard">← Dashboard</a>
-		<nav>
-			<ul class="flex items-center gap-4">
-			</ul>
-		</nav>
+	<div class="flex h-16 items-center justify-between p-4">
+		<a class=" text-secondary-foreground" href="/dashboard">← Dashboard</a>
+		<p class='text-lg text-bold'>{data.project.name}</p>
 		<ModeSwitch />
 	</div>
 </header>
