@@ -149,7 +149,7 @@
                 {/if}
 					<Dialog.Root>
 						<Dialog.Trigger>
-							<Button variant="outline" size="sm">{item.photo ? 'Change' : 'Add'} Photo</Button>
+							<Button variant="outline" size="sm" onclick={() => { selectedChangePhotoID = item.photo; }}>{item.photo ? 'Change' : 'Add'} Photo</Button>
 						</Dialog.Trigger>
 						<Dialog.Content>
 							<Dialog.Header>
@@ -198,7 +198,7 @@
 					</Dialog.Root>
 					<Label for="photoCaption">Photo caption</Label>
 					<Input
-						value={item.photoCaption}
+						bind:value={item.photoCaption}
 						placeholder="Photo caption"
 						id="photoCaption"
 					/>

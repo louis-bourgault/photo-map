@@ -29,8 +29,8 @@ export function openLightBox(photo: Photo) {
     }
 }
 
-export function initStories(stories: Array<{ id: string; title: string; slug: string, projectID: string }>) {
-    stories.splice(0, stories.length, ...stories);
+export function initStories(newStories: Array<{ id: string; title: string; slug: string, projectID: string }>) {
+    stories.splice(0, stories.length, ...newStories);
 }
 
 export function closeLightBox() {

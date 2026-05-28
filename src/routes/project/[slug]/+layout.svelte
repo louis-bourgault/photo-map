@@ -13,8 +13,11 @@
 		setProjectID,
 		openLightBox,
 		initStories,
-		filteredPhotos
+		filteredPhotos,
+		lightBox,
+		closeLightBox
 	} from '$lib/mapstore.svelte.js';
+	import Button from '$lib/components/ui/button/button.svelte';
 
 	let mapContainer!: HTMLDivElement;
 	let map: { remove: () => void; resize: () => void } | undefined = $state();
@@ -30,7 +33,7 @@
 				console.log('No resize callback to clear');
 			}
 			resizeCallback = setTimeout(() => {
-				map?.resize;
+				map?.resize();
 			}, 50);
 			map?.resize();
 		}
@@ -82,6 +85,14 @@
 		</Resizable.Pane>
 	</Resizable.PaneGroup>
 </div>
+
+{#if lightBox.open && lightBox.selectedPhoto}
+<div class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+  <Button class="absolute top-4 right-4" variant="secondary" onclick={closeLightBox}>Close</Button>
+  <img src={lightBox.selectedPhoto.fullsizeUrl || lightBox.selectedPhoto.thumbnailUrl} alt={lightBox.selectedPhoto.filename} class="max-w-full max-h-full" />
+</div>
+{/if}
+
 
 {#each filteredPhotos as photo (photo.id)}
 	<Marker

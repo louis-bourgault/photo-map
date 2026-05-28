@@ -169,12 +169,13 @@
             });
             const { url } = await resp.json();
 
+            const payload = photoPayloads.find(p => p.clientIndex === upload.clientIndex);
             photos.unshift({
               id: upload.photoID,
               filename: upload.filename,
-              exif: {},
-              latitude: '',
-              longitude: '',
+              exif: payload ? JSON.parse(payload.exif) : {},
+              latitude: payload?.latitude ?? '',
+              longitude: payload?.longitude ?? '',
               thumbnailUrl: url,
               fullsizeUrl: null,
             });
@@ -193,12 +194,6 @@
   };
  </script>
 
- {#if lightBox.open && lightBox.selectedPhoto}
-  <div class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-    <Button class="absolute top-4 right-4" variant="secondary" onclick={closeLightBox}>Close</Button>
-    <img src={lightBox.selectedPhoto.fullsizeUrl || lightBox.selectedPhoto.thumbnailUrl} alt={lightBox.selectedPhoto.filename} class="max-w-full max-h-full" />
-  </div>
- {/if}
 
 
 
