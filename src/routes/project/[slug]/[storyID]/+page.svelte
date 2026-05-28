@@ -2,7 +2,7 @@
     import { page } from '$app/state';
     import { onMount } from 'svelte';
     import * as Card from '$lib/components/ui/card/index.js';
-    import {photos, getFullSizeUrl} from '$lib/mapstore.svelte.js';
+    import {photos, getFullSizeUrl, highlightedPhoto, initPhotosInStory} from '$lib/mapstore.svelte.js';
     import { mode } from "mode-watcher";
 
     let {data} = $props();
@@ -18,6 +18,7 @@
                 }
             }
         });
+        initPhotosInStory(data.storyBlocks); //this filters the photos to only those in the story
     });
 </script>
 <div class='p-2'>

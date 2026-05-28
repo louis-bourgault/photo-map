@@ -4,10 +4,11 @@
   import * as Tabs from "$lib/components/ui/tabs/index.js";
   import { Button } from '$lib/components/ui/button/index.js';
   let { data } = $props();
-  import { photos, lightBox, openLightBox, closeLightBox, initStories } from '$lib/mapstore.svelte.js';
+  import { photos, lightBox, openLightBox, closeLightBox, initStories, clearStoryFilters } from '$lib/mapstore.svelte.js';
   import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import Input from '$lib/components/ui/input/input.svelte';
 	import { page } from '$app/state';
+  import {onMount} from 'svelte';
 
   let noExifError = $state(false);
 
@@ -20,6 +21,10 @@
     const target = event.currentTarget as HTMLInputElement;
     selectedFiles = Array.from(target.files ?? []);
   }
+
+  onMount(() => {
+    clearStoryFilters();
+  });
 
   
 

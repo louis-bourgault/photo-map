@@ -5,14 +5,14 @@
 	import * as Dialog from "$lib/components/ui/dialog/index.js";
 	import { Button } from '$lib/components/ui/button/index.js';
 	import {Input} from '$lib/components/ui/input/index.js';
-
+	import {authClient} from '$lib/authClient';
 	let { data }: { data: PageServerData } = $props();
 </script>
 
 <h1>Hi, {data.user.name}!</h1>
 <p>Your user ID is {data.user.id}.</p>
-<form method="post" action="?/signOut" use:enhance>
-	<Button>Sign out</Button>
+<form method="post" action="?/signOut">
+	<Button type='submit'>Sign out</Button>
 </form>
 <div class="p-4">
 
