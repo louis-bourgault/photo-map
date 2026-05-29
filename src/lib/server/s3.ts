@@ -1,4 +1,4 @@
-import { GetObjectCommand, S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { GetObjectCommand, S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { BACKBLAZE_APPLICATION_KEY, BACKBLAZE_KEY_ID } from '$env/static/private';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
@@ -19,6 +19,15 @@ export async function createPresignedDownloadURL(objectKey: string) {
 		Key: objectKey
 	});
 	return await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+}
+
+export async function deleteObject(objectKey: string) {
+	const bucketName = 'photomap-louis';
+	const command = new DeleteObjectCommand({
+		Bucket: bucketName,
+		Key: objectKey
+	});
+	return await s3Client.send(command);
 }
 
 export async function createPresignedUploadURL(objectKey: string) {

@@ -15,7 +15,10 @@
 		initStories,
 		filteredPhotos,
 		lightBox,
-		closeLightBox
+		closeLightBox,
+
+		handleMapPhotoClick
+
 	} from '$lib/mapstore.svelte.js';
 	import Button from '$lib/components/ui/button/button.svelte';
 
@@ -102,7 +105,7 @@
 		{map}
 		alt={photo.filename}
 		onclick={() => {
-			openLightBox(photo);
+			handleMapPhotoClick(photo);
 		}}
 	/>
 {/each}

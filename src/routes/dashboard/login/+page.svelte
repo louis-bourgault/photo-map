@@ -12,13 +12,10 @@
 <div class="flex min-h-[70vh] items-center justify-center px-4">
 	<Card.Root class="w-full max-w-sm">
 		<Card.Header>
-			<Card.Title>Login to your account</Card.Title>
+			<Card.Title>Login/Sign Up</Card.Title>
 			<Card.Description>
-				Enter your email below to login to your account
+				Sign up or login with email and password.
 			</Card.Description>
-			<Card.Action>
-				<Button variant="link" formaction="?/signUpEmail" form="auth-form" type="submit">Sign Up</Button>
-			</Card.Action>
 		</Card.Header>
 		<Card.Content>
 			<form id="auth-form" method="post" action="?/signInEmail" use:enhance>
@@ -39,10 +36,11 @@
 						<p class="text-sm text-destructive">{form.message}</p>
 					{/if}
 				</div>
-				<Card.Footer class="mt-6 flex-col gap-2 px-0 pb-0">
+				<Card.Footer class="flex-col px-0 pb-0 bg-card gap-2 mb-4">
 					<Button type="submit" class="w-full">Login</Button>
+					
 					<Button type="submit" formaction="?/signUpEmail" variant="outline" class="w-full">
-						Register
+						Sign Up
 					</Button>
 				</Card.Footer>
 			</form>

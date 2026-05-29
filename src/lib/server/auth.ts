@@ -12,5 +12,8 @@ export const auth = betterAuth({
 	emailAndPassword: { enabled: true },
 	plugins: [
 		sveltekitCookies(getRequestEvent) // make sure this is the last plugin in the array
-	]
+	],
+	user: {
+		deleteUser:{enabled: true}
+	}
 });

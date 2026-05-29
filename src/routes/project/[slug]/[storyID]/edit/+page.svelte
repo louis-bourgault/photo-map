@@ -151,11 +151,11 @@
 						<Dialog.Trigger>
 							<Button variant="outline" size="sm" onclick={() => { selectedChangePhotoID = item.photo; }}>{item.photo ? 'Change' : 'Add'} Photo</Button>
 						</Dialog.Trigger>
-						<Dialog.Content>
+						<Dialog.Content extraWide={true}>
 							<Dialog.Header>
 								<Dialog.Title>{item.photo ? 'Change' : 'Add'}</Dialog.Title>
 							</Dialog.Header>
-							<div class="grid gap-4 py-4">
+							<div class="grid grid-cols-3 gap-4 py-4">
 								{#each photos as photo}
 									<button
 										type="button"

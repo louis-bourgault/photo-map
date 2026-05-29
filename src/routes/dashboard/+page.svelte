@@ -9,11 +9,6 @@
 	let { data }: { data: PageServerData } = $props();
 </script>
 
-<h1>Hi, {data.user.name}!</h1>
-<p>Your user ID is {data.user.id}.</p>
-<form method="post" action="?/signOut">
-	<Button type='submit'>Sign out</Button>
-</form>
 <div class="p-4">
 
 	<h1 class='font-heading text-3xl '>Projects</h1>
