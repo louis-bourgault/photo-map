@@ -1,4 +1,5 @@
 export let photos: Array<Photo> = $state([]);
+
 export let projectID: string = '';
 export let stories: Array<{ id: string; title: string; slug: string; projectID: string }> = $state(
 	[]
@@ -12,6 +13,22 @@ export let lightBox = $state({
 	open: false,
 	selectedPhoto: null as Photo | null
 });
+
+export function setFullURL(photo: {id:number, fullSizeURL: string}) {
+	//in the story loading function, we get these in the page.server.ts to speed things up a bit. so we can just sub them in here
+	const photoToUpdate = photos.find(p => p.id === photo.id);
+	if (photoToUpdate) {
+		photoToUpdate.fullsizeUrl = photo.fullSizeURL;
+	}
+	const filteredPhotoToUpdate = filteredPhotos.find(p => p.id === photo.id);
+	if (filteredPhotoToUpdate) {
+		filteredPhotoToUpdate.fullsizeUrl = photo.fullSizeURL;
+	}
+	if (lightBox.selectedPhoto?.id === photo.id) {
+		lightBox.selectedPhoto.fullsizeUrl = photo.fullSizeURL;
+	}
+
+}
 
 export type Photo = {
 	id: number;

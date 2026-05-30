@@ -12,7 +12,10 @@
 		initStories,
 		clearStoryFilters,
     deletePhoto,
-		type Photo
+		type Photo,
+
+		filteredPhotos
+
 	} from '$lib/mapstore.svelte.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import Input from '$lib/components/ui/input/input.svelte';
@@ -192,7 +195,7 @@
 						const { url } = await resp.json();
 
 						const payload = photoPayloads.find((p) => p.clientIndex === upload.clientIndex);
-						photos.unshift({
+						let newPhoto = {
 							id: upload.photoID,
 							filename: upload.filename,
 							exif: payload ? JSON.parse(payload.exif) : {},
@@ -200,7 +203,10 @@
 							longitude: payload?.longitude ?? '',
 							thumbnailUrl: url,
 							fullsizeUrl: null
-						});
+						}
+						console.log(newPhoto)
+						photos.unshift(newPhoto);
+						filteredPhotos.unshift(newPhoto)
 					})
 				);
 

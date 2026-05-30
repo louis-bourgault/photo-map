@@ -7,7 +7,8 @@
 		getFullSizeUrl,
 		highlightedPhoto,
 		initStory,
-		openLightBox
+		openLightBox,
+		setFullURL
 	} from '$lib/mapstore.svelte.js';
 	import type { Photo } from '$lib/mapstore.svelte.js';
 	import { mode } from 'mode-watcher';
@@ -28,13 +29,8 @@
 
 		storyInitialized = true;
 
-		for (const block of data.storyBlocks) {
-			if (block.story_item.photo) {
-				const photo = photos.find((p) => p.id === block.story_item.photo);
-				if (photo && !photo.fullsizeUrl) {
-					void getFullSizeUrl(photo);
-				}
-			}
+		for (const photo of data.photoPresigned) {
+			setFullURL(photo)
 		}
 
 		initStory(data.storyBlocks, scrollToPhoto);
