@@ -3,6 +3,10 @@
 	import Header from '$lib/components/header.svelte';
 </script>
 <Header />
+<svelte:head>
+<title>Photomap</title>
+</svelte:head>
+
 <div class="h-[calc(100%-4rem)] flex items-center justify-center">
 	<br class='h-10'>
 	<div class=" items-center gap-6 pt-5">

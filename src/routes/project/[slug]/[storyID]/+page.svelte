@@ -37,6 +37,11 @@
 	});
 </script>
 
+<svelte:head>
+<title>{data.storyDetails.title} | photomap</title>
+</svelte:head>
+
+
 <div class="h-[calc(100dvh-4rem)] overflow-y-auto p-4">
 	<Button href={`/project/${page.params.slug}`} variant='ghost'>← Back to project</Button>
 	<h1 class="mb-4 text-4xl font-bold">{data.storyDetails.title}</h1>

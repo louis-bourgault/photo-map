@@ -3,7 +3,11 @@ import { story, storyItem } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 
-export async function load({ params }) {
+export async function load({ params, locals }) {
+	if (!locals.user ) {
+		throw error(401, 'Unauthorized');
+	}
+
 	const rows = await db
 		.select({
 			storyId: story.id,

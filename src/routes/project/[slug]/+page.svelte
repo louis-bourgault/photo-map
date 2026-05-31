@@ -235,6 +235,11 @@
 	};
 </script>
 
+<svelte:head>
+<title>{data.project.name} | photomap</title>
+</svelte:head>
+
+
 <div class="p-2">
 	<Tabs.Root value="photos" class="w-full">
 		<Tabs.List class="w-full">

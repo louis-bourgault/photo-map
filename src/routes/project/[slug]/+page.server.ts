@@ -73,7 +73,7 @@ export const actions = {
             title,
             slug,
         });
-        redirect(303, `/project/${projectID}/${slug}`);
+        redirect(303, `/project/${projectID}/${slug}/edit`);
     },
 
     deleteStory: async (event) => {

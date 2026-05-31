@@ -124,6 +124,11 @@
 	$inspect(selectedChangePhotoID);
 </script>
 
+<svelte:head>
+<title>{data.storyDetails.title} | edit | photomap</title>
+</svelte:head>
+
+
 <div class="h-[calc(100dvh-4rem)] overflow-y-auto p-4 sm:p-6">
 	<div class="mx-auto flex w-full max-w-3xl flex-col gap-4">
 		<div class="flex flex-wrap items-center justify-between gap-3">
@@ -135,7 +140,7 @@
 				>{saving ? 'Saving...' : 'Save Story'}</Button
 			>
 		</div>
-		<p class="text-sm text-muted-foreground">welcome to the story view</p>
+		<h1 class='text-2xl'>{data.storyDetails.title}</h1>
 		{#each storyBlocks as item, index}
 			<Card.Root class="w-full">
 				{#if item.itemType === 'photo'}

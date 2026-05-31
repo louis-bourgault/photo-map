@@ -7,8 +7,37 @@ export let stories: Array<{ id: string; title: string; slug: string; projectID: 
 );
 export let filteredPhotos: Array<Photo> = $state([]); //inside a story, we don't want to show all of them
 export let highlightedPhoto: Photo | null = $state(null);
+export let mapboxBounds: {minLat: number, minLng: number, maxLat: number, maxLng: number} | null = null;
+
+function setMapBounds() {
+	if (filteredPhotos.length === 0) return null;
+	const lats = filteredPhotos.map(p => parseFloat(p.latitude));
+	const lngs = filteredPhotos.map(p => parseFloat(p.longitude));
+	let minLat = Math.min(...lats);
+	let maxLat = Math.max(...lats);
+	let minLng = Math.min(...lngs);
+	let maxLng = Math.max(...lngs);
+
+	if (Math.abs(maxLat - minLat) < 0.01) {
+		maxLat += 0.01;
+		minLat -= 0.01;
+	}
+	if (Math.abs(maxLng - minLng) < 0.01) {
+		maxLng += 0.01;
+		minLng -= 0.01;
+	}
+	//if there's only one photo, i dont want it stupidly zoomed in.
+	mapboxBounds = {
+		minLat: minLat,
+		maxLat: maxLat,
+		minLng: minLng,
+		maxLng: maxLng
+	};
+}
+
 let currentStoryID: string | null = null;
 let scrollFunction: Function | null = null;
+export let map: any;
 
 export let lightBox = $state({
 	open: false,
@@ -77,6 +106,7 @@ export function setProjectID(id: string) {
 export function initPhotos(newPhotos: Array<Photo>) {
 	photos.splice(0, photos.length, ...newPhotos);
 	filteredPhotos.splice(0, filteredPhotos.length, ...newPhotos);
+	setMapBounds();
 }
 
 const fullsizeRequests = new Map<number, Promise<string>>();

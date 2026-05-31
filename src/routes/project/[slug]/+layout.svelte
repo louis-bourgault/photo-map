@@ -17,7 +17,8 @@
 		lightBox,
 		closeLightBox,
 
-		handleMapPhotoClick
+		handleMapPhotoClick,
+		mapboxBounds
 
 	} from '$lib/mapstore.svelte.js';
 	import Button from '$lib/components/ui/button/button.svelte';
@@ -42,6 +43,7 @@
 		}
 	});
 
+
 	onMount(() => {
 		let active = true;
 
@@ -49,18 +51,24 @@
 		setProjectID(data.project.id);
 
 		mapboxgl.accessToken = PUBLIC_MAPBOX_ACCESS_TOKEN;
+		initPhotos(data.processedPhotos);
+		initStories(data.stories);
+
+		if (!mapboxBounds) {
+			return
+		}
 
 		map = new mapboxgl.Map({
 			container: mapContainer,
 			style: 'mapbox://styles/mapbox/satellite-streets-v12',
-			center: [0, 0],
-			zoom: 2
+			bounds: [
+				[mapboxBounds?.minLng, mapboxBounds?.minLat],[mapboxBounds?.maxLng, mapboxBounds?.maxLat]
+			],
+			fitBoundsOptions: {padding: 20}
 		});
 
 		requestAnimationFrame(() => map?.resize());
 
-		initPhotos(data.processedPhotos);
-		initStories(data.stories);
 
 		return () => {
 			active = false;

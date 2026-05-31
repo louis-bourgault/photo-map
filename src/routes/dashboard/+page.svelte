@@ -9,6 +9,10 @@
 	let { data }: { data: PageServerData } = $props();
 </script>
 
+<svelte:head>
+<title>Dashboard | photomap</title>
+</svelte:head>
+
 <div class="p-4">
 
 	<h1 class='font-heading text-3xl '>Projects</h1>
