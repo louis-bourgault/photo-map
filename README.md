@@ -16,3 +16,7 @@ For the website, I'm just using basic Sveltekit. It's a beautiful framework, nic
 Database - Neon Postgres, with Drizzle as the client. I like postgres, and can switch of neon anytime if i want to, but it is very convenient.
 Storage - Cloudflare R2 public bucket, using presigned urls for upload.
 Map - Mapbox. It's a beautiful, easy to use, map. They do need a credit card for the free tier, though. 
+
+## Running
+To run this project, set all the env urls in .env.example, run pnpm db:push to set up the database, run pnpm install and then pnpm dev. Remember to allow CORS requests for the presigned urls on your s3 provider.
+This also works fine on Vercel, just with default sveltekit settings.
