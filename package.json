@@ -59,6 +59,7 @@
 	"dependencies": {
 		"@aws-sdk/client-s3": "^3.1053.0",
 		"@aws-sdk/s3-request-presigner": "^3.1053.0",
+		"@sveltejs/adapter-cloudflare": "^7.2.8",
 		"@tailwindcss/typography": "^0.5.19",
 		"exifreader": "^4.39.1",
 		"mapbox-gl": "^3.24.0",
