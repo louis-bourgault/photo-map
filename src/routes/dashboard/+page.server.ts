@@ -3,15 +3,20 @@ import type { Actions } from './$types';
 import type { PageServerLoad } from './$types';
 import { auth } from '$lib/server/auth';
 import { db } from '$lib/server/db';
-import { project } from '$lib/server/db/schema';
-import {eq} from 'drizzle-orm';
-export const load: PageServerLoad = async(event) => {
+import { project, photo } from '$lib/server/db/schema';
+import { eq } from 'drizzle-orm';
+import { deleteObject } from '$lib/server/s3';
+export const load: PageServerLoad = async (event) => {
 	if (!event.locals.user) {
 		return redirect(302, '/dashboard/login');
 	}
-	const projectsSearch = await db.select().from(project).where(eq(project.userID, event.locals.user.id)).execute();
+	const projectsSearch = await db
+		.select()
+		.from(project)
+		.where(eq(project.userID, event.locals.user.id))
+		.execute();
 	console.log(projectsSearch);
-	
+
 	return { user: event.locals.user, projects: projectsSearch };
 };
 
@@ -26,16 +31,42 @@ export const actions: Actions = {
 		const formData = await event.request.formData();
 		const name = formData.get('name') as string;
 		console.log(name);
-		const [proj] = await db.insert(project).values({
-			id: crypto.randomUUID(),
-			name,
-			userID: event.locals.user.id,
-		}).returning({ id: project.id });
+		const [proj] = await db
+			.insert(project)
+			.values({
+				id: crypto.randomUUID(),
+				name,
+				userID: event.locals.user.id
+			})
+			.returning({ id: project.id });
 		return redirect(302, '/project/' + proj.id);
 	},
 	deleteProject: async (event) => {
 		const formData = await event.request.formData();
 		const id = formData.get('projectId') as string;
+		const userId = event.locals.user.id;
+
+		const [proj, photos] = await Promise.all([
+			db
+				.select()
+				.from(project)
+				.where(eq(project.id, id))
+				.then((res) => res[0]),
+			db.select().from(photo).where(eq(photo.projectID, id)).execute()
+		]);
+		if (!proj) {
+			return redirect(302, '/dashboard');
+		}
+		if (proj.userID !== userId) {
+			return redirect(302, '/dashboard');
+		}
+		let deletePhotoPromises = [];
+		for (const photo of photos) {
+			deletePhotoPromises.push(deleteObject(`photos/${proj.id}/${photo.filename}/full`));
+			deletePhotoPromises.push(deleteObject(`photos/${proj.id}/${photo.filename}/thumb`));
+		}
+		await Promise.all(deletePhotoPromises);
+
 		await db.delete(project).where(eq(project.id, id)).execute();
 		console.log('Deleted project with id:', id);
 		return redirect(302, '/dashboard');

@@ -2,9 +2,10 @@
 	import * as Resizable from '$lib/components/ui/resizable/index.js';
 	import ModeSwitch from '$lib/components/mode-switch.svelte';
 	import Marker from '$lib/components/marker.svelte';
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { PUBLIC_MAPBOX_ACCESS_TOKEN } from '$env/static/public';
 	import mapboxgl from '$lib/mapbox-gl';
+	
 	import 'mapbox-gl/dist/mapbox-gl.css';
 	let { children, data } = $props();
 	import {
@@ -24,7 +25,7 @@
 	import Button from '$lib/components/ui/button/button.svelte';
 
 	let mapContainer!: HTMLDivElement;
-	let map: { remove: () => void; resize: () => void } | undefined = $state();
+	let map: mapboxgl.Map | undefined = $state();
 
 	let mapWidth = $state();
 	let resizeCallback: any;
@@ -43,18 +44,29 @@
 		}
 	});
 
+	$effect(() => {
+		if (map && mapboxBounds && mapboxBounds.minLat !== null && mapboxBounds.minLng !== null && mapboxBounds.maxLat !== null && mapboxBounds.maxLng !== null) {
+			map.fitBounds([
+				[mapboxBounds.minLng, mapboxBounds.minLat],
+				[mapboxBounds.maxLng, mapboxBounds.maxLat]
+			], {
+				padding: 20,
+				animate: true
+			});
+		}
+	}
+
+	)
+
 
 	onMount(() => {
-		let active = true;
-
-		if (!active) return;
 		setProjectID(data.project.id);
 
 		mapboxgl.accessToken = PUBLIC_MAPBOX_ACCESS_TOKEN;
 		initPhotos(data.processedPhotos);
 		initStories(data.stories);
 
-		if (!mapboxBounds) {
+		if (!mapboxBounds || !mapboxBounds.minLng || mapboxBounds.minLat === null || mapboxBounds.maxLng === null || mapboxBounds.maxLat === null) {
 			return
 		}
 
@@ -68,13 +80,12 @@
 		});
 
 		requestAnimationFrame(() => map?.resize());
-
-
-		return () => {
-			active = false;
-			map?.remove();
-		};
 	});
+	
+	onDestroy(() => {
+		map?.remove();
+
+	})
 </script>
 
 <header class="width-full border-b">

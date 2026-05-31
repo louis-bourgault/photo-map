@@ -11,25 +11,20 @@
 		closeLightBox,
 		initStories,
 		clearStoryFilters,
-    deletePhoto,
+		deletePhoto,
 		type Photo,
-
 		filteredPhotos
-
 	} from '$lib/mapstore.svelte.js';
 
-	let stories = $state([...data.stories])
+	let stories = $state([...data.stories]);
 
-	
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import Input from '$lib/components/ui/input/input.svelte';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
-	import { Delete, Trash2 } from '@lucide/svelte';
+	import { Pencil, Trash2 } from '@lucide/svelte';
 
 	let noExifError = $state(false);
-
-
 
 	let fileInput = $state<HTMLInputElement | null>(null);
 	let selectedFiles = $state<File[]>([]);
@@ -46,13 +41,13 @@
 	});
 
 	const deleteStory = () => {
-        return async ({ result }) => {
-            if (result.type === 'success') {
-                const deletedStoryID = result.data?.storyID;
-                stories = stories.filter((story) => story.id !== deletedStoryID);
-            }
-        };
-    };
+		return async ({ result }) => {
+			if (result.type === 'success') {
+				const deletedStoryID = result.data?.storyID;
+				stories = stories.filter((story) => story.id !== deletedStoryID);
+			}
+		};
+	};
 
 	async function createThumbnail(file: File, maxSize = 512) {
 		if (!file.type.startsWith('image/')) {
@@ -216,10 +211,10 @@
 							longitude: payload?.longitude ?? '',
 							thumbnailUrl: url,
 							fullsizeUrl: null
-						}
-						console.log(newPhoto)
+						};
+						console.log(newPhoto);
 						photos.unshift(newPhoto);
-						filteredPhotos.unshift(newPhoto)
+						filteredPhotos.unshift(newPhoto);
 					})
 				);
 
@@ -236,9 +231,8 @@
 </script>
 
 <svelte:head>
-<title>{data.project.name} | photomap</title>
+	<title>{data.project.name} | photomap</title>
 </svelte:head>
-
 
 <div class="p-2">
 	<Tabs.Root value="photos" class="w-full">
@@ -267,17 +261,19 @@
 								class="aspect-square object-cover"
 							/>
 						</button>
-						<Button
-							variant="secondary"
-							size="icon"
-							class="absolute top-2 right-2 z-10 opacity-0 transition-opacity group-hover:opacity-100"
-							onclick={() => {
-								deletePhoto(photo);
-							}}
-						>
-							<Trash2></Trash2>
-							<span class="sr-only">Delete Photo</span>
-						</Button>
+						{#if data.user && data.project.userID === data.user.id}
+							<Button
+								variant="secondary"
+								size="icon"
+								class="absolute top-2 right-2 z-10 opacity-0 transition-opacity group-hover:opacity-100"
+								onclick={() => {
+									deletePhoto(photo);
+								}}
+							>
+								<Trash2></Trash2>
+								<span class="sr-only">Delete Photo</span>
+							</Button>
+						{/if}
 					</div>
 				{/each}
 			</div>
@@ -304,36 +300,52 @@
 			{/if}
 		</Tabs.Content>
 		<Tabs.Content value="stories">
-			<div class="flex flex-col gap-4">
-				<h2 class="text-2xl font-bold">Stories</h2>
-				<Dialog.Root>
-					<Dialog.Trigger>Create Story</Dialog.Trigger>
-					<Dialog.Content>
-						<Dialog.Header>
-							<Dialog.Title>Create a new story</Dialog.Title>
-							<Dialog.Description>
-								Start a new story to group photos together and add captions.
-							</Dialog.Description>
-						</Dialog.Header>
-						<form method="post" action="?/createStory" use:enhance>
-							<Input type="text" name="title" placeholder="Story Title" class="mb-4" />
-							<Button type="submit">Create</Button>
-						</form>
-					</Dialog.Content>
-				</Dialog.Root>
+			<div class="flex flex-col gap-4 pt-2">
+				<div class="flex items-center justify-between gap-4">
+					<h2 class="text-2xl font-bold">Stories</h2>
+					{#if data.user && data.project.userID === data.user.id}
+						<Dialog.Root>
+							<Dialog.Trigger>
+								<Button>Create Story</Button>
+							</Dialog.Trigger>
+							<Dialog.Content>
+								<Dialog.Header>
+									<Dialog.Title>Create a new story</Dialog.Title>
+									<Dialog.Description>
+										Start a new story to group photos together and add captions.
+									</Dialog.Description>
+								</Dialog.Header>
+								<form method="post" action="?/createStory" use:enhance>
+									<Input type="text" name="title" placeholder="Story Title" class="mb-4" />
+									<Button type="submit">Create</Button>
+								</form>
+							</Dialog.Content>
+						</Dialog.Root>
+					{/if}
+				</div>
 				{#each stories as story}
 					<div class="rounded border p-4">
 						<h3 class="text-xl font-semibold">{story.title}</h3>
-						<Button href={`/project/${page.params.slug}/${story.slug}`}>Go To Story</Button>
-						<Button href={`/project/${page.params.slug}/${story.slug}/edit`} variant="outline"
-							>Edit Story</Button
-						>
-						<form use:enhance={deleteStory} action='?/deleteStory' method="POST">
-							<input type='hidden' name='storyID' value={story.id}>
-							<Button size='icon' type='submit'>
-								<Trash2></Trash2>
-							</Button>
-						</form>
+						<div class="flex items-center justify-between gap-4">
+							<Button href={`/project/${page.params.slug}/${story.slug}`}>Go To Story</Button>
+							<div class="flex items-center gap-2">
+								{#if data.user && data.user.id === data.project.userID}
+									<Button
+										href={`/project/${page.params.slug}/${story.slug}/edit`}
+										variant="secondary"
+										size="icon"
+									>
+										<Pencil></Pencil>
+									</Button>
+									<form use:enhance={deleteStory} action="?/deleteStory" method="POST">
+										<input type="hidden" name="storyID" value={story.id} />
+										<Button size="icon" type="submit" variant="destructive">
+											<Trash2></Trash2>
+										</Button>
+									</form>
+								{/if}
+							</div>
+						</div>
 					</div>
 				{/each}
 			</div>

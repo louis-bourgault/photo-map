@@ -24,6 +24,7 @@ export async function createPresignedDownloadURL(objectKey: string) {
 }
 
 export async function deleteObject(objectKey: string) {
+	console.log('deleting', objectKey);
 	const bucketName = S3_BUCKET_NAME;
 	const command = new DeleteObjectCommand({
 		Bucket: bucketName,

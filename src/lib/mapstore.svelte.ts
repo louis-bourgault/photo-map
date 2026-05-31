@@ -7,7 +7,12 @@ export let stories: Array<{ id: string; title: string; slug: string; projectID: 
 );
 export let filteredPhotos: Array<Photo> = $state([]); //inside a story, we don't want to show all of them
 export let highlightedPhoto: Photo | null = $state(null);
-export let mapboxBounds: {minLat: number, minLng: number, maxLat: number, maxLng: number} | null = null;
+export let mapboxBounds: {minLat: number | null, minLng: number|null, maxLat: number|null, maxLng: number|null} = $state({
+	minLat: null,
+	minLng: null,
+	maxLat: null,
+	maxLng: null
+});
 
 function setMapBounds() {
 	if (filteredPhotos.length === 0) return null;
@@ -27,12 +32,11 @@ function setMapBounds() {
 		minLng -= 0.01;
 	}
 	//if there's only one photo, i dont want it stupidly zoomed in.
-	mapboxBounds = {
-		minLat: minLat,
-		maxLat: maxLat,
-		minLng: minLng,
-		maxLng: maxLng
-	};
+	//it won't let us reassign the whole thing since its an exported store, so do it individually. i dont know why thats the case.
+	mapboxBounds.minLat = minLat;
+	mapboxBounds.maxLat = maxLat;
+	mapboxBounds.minLng = minLng;
+	mapboxBounds.maxLng = maxLng;
 }
 
 let currentStoryID: string | null = null;
@@ -155,6 +159,7 @@ export async function initStory(storyBlocks: any, scrollTo: Function) {
 		}
 	}
 	scrollFunction = scrollTo;
+	setMapBounds();
 }
 
 export async function clearStoryFilters() {
@@ -163,6 +168,7 @@ export async function clearStoryFilters() {
 	filteredPhotos.push(...photos);
 	currentStoryID = null;
 	scrollFunction = null;
+	setMapBounds();
 }
 
 export async function deletePhoto(photo: Photo) {
