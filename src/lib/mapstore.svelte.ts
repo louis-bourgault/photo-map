@@ -1,4 +1,5 @@
 export let photos: Array<Photo> = $state([]);
+import { PUBLIC_S3_PUBLIC_URL } from '$env/static/public';
 
 export let projectID: string = '';
 export let stories: Array<{ id: string; title: string; slug: string; projectID: string }> = $state(
@@ -81,28 +82,34 @@ export function initPhotos(newPhotos: Array<Photo>) {
 const fullsizeRequests = new Map<number, Promise<string>>();
 
 export async function getFullSizeUrl(photo: Photo) {
+	//this si a rather redundant function since we don't need presigned urls anymore since its a public bucket. I can't be bothered refactoring.
 	if (photo.fullsizeUrl) return photo.fullsizeUrl;
-	let pending = fullsizeRequests.get(photo.id);
-	if (!pending) {
-		pending = (async () => {
-			const response = await fetch('/api/presigned?res=full', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ projectID, filename: photo.filename })
-			});
+	const url = `${PUBLIC_S3_PUBLIC_URL}/photos/${projectID}/${photo.filename}/full`;
+	console.log('Setting fullsize URL for photo', photo.id, 'to', url);
+	photo.fullsizeUrl = url;
+	return url;
+	
+	// let pending = fullsizeRequests.get(photo.id);
+	// if (!pending) {
+	// 	pending = (async () => {
+	// 		const response = await fetch('/api/presigned?res=full', {
+	// 			method: 'POST',
+	// 			headers: { 'content-type': 'application/json' },
+	// 			body: JSON.stringify({ projectID, filename: photo.filename })
+	// 		});
 
-			const data = await response.json();
-			photo.fullsizeUrl = data.url;
-			return data.url as string;
-		})();
+	// 		const data = await response.json();
+	// 		photo.fullsizeUrl = data.url;
+	// 		return data.url as string;
+	// 	})();
 
-		fullsizeRequests.set(photo.id, pending);
-	}
-	try {
-		return await pending;
-	} finally {
-		fullsizeRequests.delete(photo.id);
-	}
+	// 	fullsizeRequests.set(photo.id, pending);
+	// }
+	// try {
+	// 	return await pending;
+	// } finally {
+	// 	fullsizeRequests.delete(photo.id);
+	// }
 }
 
 export async function initStory(storyBlocks: any, scrollTo: Function) {

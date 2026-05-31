@@ -66,7 +66,7 @@ export const actions = {
         if (!proj || proj.userID !== user.id) {
             return { error: 'Unauthorized' };
         }
-        const slug = title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
+        const slug = title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '') + '-' + crypto.randomUUID().slice(0, 4);
         await db.insert(story).values({
             id: crypto.randomUUID(),
             projectID,
@@ -74,5 +74,20 @@ export const actions = {
             slug,
         });
         redirect(303, `/project/${projectID}/${slug}`);
+    },
+
+    deleteStory: async (event) => {
+        const formData = await event.request.formData();
+        const storyID = formData.get('storyID') as string;
+        const projectID = event.params.slug; 
+        const user = event.locals.user;
+
+        const [proj] = await db.select().from(project).where(eq(project.id, projectID));
+        if (!proj || proj.userID !== user.id) {
+            return { error: 'Unauthorized' };
+        }
+
+        await db.delete(story).where(eq(story.id, storyID));
+        return { success: true, storyID };
     }
 }

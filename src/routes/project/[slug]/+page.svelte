@@ -17,6 +17,10 @@
 		filteredPhotos
 
 	} from '$lib/mapstore.svelte.js';
+
+	let stories = $state([...data.stories])
+
+	
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import Input from '$lib/components/ui/input/input.svelte';
 	import { page } from '$app/state';
@@ -24,6 +28,8 @@
 	import { Delete, Trash2 } from '@lucide/svelte';
 
 	let noExifError = $state(false);
+
+
 
 	let fileInput = $state<HTMLInputElement | null>(null);
 	let selectedFiles = $state<File[]>([]);
@@ -39,7 +45,14 @@
 		clearStoryFilters();
 	});
 
-	
+	const deleteStory = () => {
+        return async ({ result }) => {
+            if (result.type === 'success') {
+                const deletedStoryID = result.data?.storyID;
+                stories = stories.filter((story) => story.id !== deletedStoryID);
+            }
+        };
+    };
 
 	async function createThumbnail(file: File, maxSize = 512) {
 		if (!file.type.startsWith('image/')) {
@@ -303,13 +316,19 @@
 						</form>
 					</Dialog.Content>
 				</Dialog.Root>
-				{#each data.stories as story}
+				{#each stories as story}
 					<div class="rounded border p-4">
 						<h3 class="text-xl font-semibold">{story.title}</h3>
 						<Button href={`/project/${page.params.slug}/${story.slug}`}>Go To Story</Button>
 						<Button href={`/project/${page.params.slug}/${story.slug}/edit`} variant="outline"
 							>Edit Story</Button
 						>
+						<form use:enhance={deleteStory} action='?/deleteStory' method="POST">
+							<input type='hidden' name='storyID' value={story.id}>
+							<Button size='icon' type='submit'>
+								<Trash2></Trash2>
+							</Button>
+						</form>
 					</div>
 				{/each}
 			</div>
