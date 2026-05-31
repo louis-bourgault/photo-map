@@ -8,7 +8,8 @@
 		highlightedPhoto,
 		initStory,
 		openLightBox,
-		setFullURL
+		setFullURL,
+		setHighlightedPhotos
 	} from '$lib/mapstore.svelte.js';
 	import type { Photo } from '$lib/mapstore.svelte.js';
 	import { mode } from 'mode-watcher';
@@ -18,12 +19,12 @@
 		const el = document.getElementById(`story-photo-${photoID}`);
 		if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 	}
-	let storyContainer: HTMLDivElement
+	let storyContainer: HTMLDivElement;
 	onMount(() => {
-		if (!storyContainer)return;
-		const cleanup = observeStoryImages(storyContainer)
-		return cleanup
-	})
+		if (!storyContainer) return;
+		const cleanup = observeStoryImages(storyContainer);
+		return cleanup;
+	});
 	let { data } = $props();
 	import { marked } from 'marked';
 	import { Maximize2 } from '@lucide/svelte';
@@ -47,23 +48,18 @@
 			(entries) => {
 				for (const entry of entries) {
 					const id = Number((entry.target as HTMLElement).dataset.photoId);
-					const rect = entry.intersectionRect;
-					visibilityById.set(id, rect.height);
+					const totalArea = entry.boundingClientRect.width * entry.boundingClientRect.height;
+					const visibleArea = entry.intersectionRect.width * entry.intersectionRect.height;
+					const visibleRatio = totalArea > 0 ? visibleArea / totalArea : 0;
+					visibilityById.set(id, visibleRatio);
 				}
 
-				let bestId: number | null = null;
-				let bestHeight = 0;
+				const visiblePhotos = Array.from(visibilityById, ([photoId, visibleRatio]) => ({
+					photoId,
+					visibleRatio
+				})).sort((a, b) => b.visibleRatio - a.visibleRatio);
 
-				for (const [id, height] of visibilityById) {
-					if (height > bestHeight) {
-						bestHeight = height;
-						bestId = id;
-					}
-				}
-				if (bestHeight !== 0 && bestId !== currentHighlightedId) {
-					currentHighlightedId = bestId;
-					console.log('image', bestId, "is now the most visible")
-				}
+				setHighlightedPhotos(visiblePhotos);
 			},
 			{ root: container, threshold: [0, 0.25, 0.5, 0.75, 1] }
 		);

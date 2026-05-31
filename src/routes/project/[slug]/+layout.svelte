@@ -126,5 +126,6 @@
 		onclick={() => {
 			handleMapPhotoClick(photo);
 		}}
+		visibleRatio={photo.visibleRatio}
 	/>
 {/each}

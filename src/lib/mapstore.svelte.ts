@@ -5,9 +5,15 @@ export let projectID: string = '';
 export let stories: Array<{ id: string; title: string; slug: string; projectID: string }> = $state(
 	[]
 );
-export let filteredPhotos: Array<Photo> = $state([]); //inside a story, we don't want to show all of them
+type RichPhoto = Photo & { visibleRatio?: number };
+export let filteredPhotos: Array<RichPhoto> = $state([]); //inside a story, we don't want to show all of them
 export let highlightedPhoto: Photo | null = $state(null);
-export let mapboxBounds: {minLat: number | null, minLng: number|null, maxLat: number|null, maxLng: number|null} = $state({
+export let mapboxBounds: {
+	minLat: number | null;
+	minLng: number | null;
+	maxLat: number | null;
+	maxLng: number | null;
+} = $state({
 	minLat: null,
 	minLng: null,
 	maxLat: null,
@@ -15,9 +21,15 @@ export let mapboxBounds: {minLat: number | null, minLng: number|null, maxLat: nu
 });
 
 function setMapBounds() {
-	if (filteredPhotos.length === 0) return null;
-	const lats = filteredPhotos.map(p => parseFloat(p.latitude));
-	const lngs = filteredPhotos.map(p => parseFloat(p.longitude));
+	if (filteredPhotos.length === 0) {
+		mapboxBounds.minLat = -45.0;
+		mapboxBounds.maxLat = 40.0;
+		mapboxBounds.minLng = 93.0;
+		mapboxBounds.maxLng = 153.0;
+		return;
+	};
+	const lats = filteredPhotos.map((p) => parseFloat(p.latitude));
+	const lngs = filteredPhotos.map((p) => parseFloat(p.longitude));
 	let minLat = Math.min(...lats);
 	let maxLat = Math.max(...lats);
 	let minLng = Math.min(...lngs);
@@ -43,25 +55,36 @@ let currentStoryID: string | null = null;
 let scrollFunction: Function | null = null;
 export let map: any;
 
+export function setHighlightedPhotos(visiblePhotos: { photoId: number; visibleRatio: number }[]) {
+    let importantPhotos = visiblePhotos.filter((p) => p.visibleRatio > 0);
+    if (!(importantPhotos.length > 0)) return;
+    importantPhotos = importantPhotos.slice(0, 5);
+    importantPhotos.forEach((photo) => {
+        const p = filteredPhotos.find((p) => p.id === photo.photoId);
+        if (p) {
+            p.visibleRatio = photo.visibleRatio;
+        }
+    });
+}
+
 export let lightBox = $state({
 	open: false,
 	selectedPhoto: null as Photo | null
 });
 
-export function setFullURL(photo: {id:number, fullSizeURL: string}) {
+export function setFullURL(photo: { id: number; fullSizeURL: string }) {
 	//in the story loading function, we get these in the page.server.ts to speed things up a bit. so we can just sub them in here
-	const photoToUpdate = photos.find(p => p.id === photo.id);
+	const photoToUpdate = photos.find((p) => p.id === photo.id);
 	if (photoToUpdate) {
 		photoToUpdate.fullsizeUrl = photo.fullSizeURL;
 	}
-	const filteredPhotoToUpdate = filteredPhotos.find(p => p.id === photo.id);
+	const filteredPhotoToUpdate = filteredPhotos.find((p) => p.id === photo.id);
 	if (filteredPhotoToUpdate) {
 		filteredPhotoToUpdate.fullsizeUrl = photo.fullSizeURL;
 	}
 	if (lightBox.selectedPhoto?.id === photo.id) {
 		lightBox.selectedPhoto.fullsizeUrl = photo.fullSizeURL;
 	}
-
 }
 
 export type Photo = {
@@ -122,7 +145,7 @@ export async function getFullSizeUrl(photo: Photo) {
 	console.log('Setting fullsize URL for photo', photo.id, 'to', url);
 	photo.fullsizeUrl = url;
 	return url;
-	
+
 	// let pending = fullsizeRequests.get(photo.id);
 	// if (!pending) {
 	// 	pending = (async () => {
