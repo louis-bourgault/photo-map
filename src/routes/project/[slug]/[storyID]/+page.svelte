@@ -18,7 +18,12 @@
 		const el = document.getElementById(`story-photo-${photoID}`);
 		if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 	}
-
+	let storyContainer: HTMLDivElement
+	onMount(() => {
+		if (!storyContainer)return;
+		const cleanup = observeStoryImages(storyContainer)
+		return cleanup
+	})
 	let { data } = $props();
 	import { marked } from 'marked';
 	import { Maximize2 } from '@lucide/svelte';
@@ -30,36 +35,68 @@
 		storyInitialized = true;
 
 		for (const photo of data.photoPresigned) {
-			setFullURL(photo)
+			setFullURL(photo);
 		}
 
 		initStory(data.storyBlocks, scrollToPhoto);
 	});
+	const visibilityById = new Map<number, number>();
+	let currentHighlightedId: number | null = null;
+	function observeStoryImages(container: HTMLElement) {
+		const observer = new IntersectionObserver(
+			(entries) => {
+				for (const entry of entries) {
+					const id = Number((entry.target as HTMLElement).dataset.photoId);
+					const rect = entry.intersectionRect;
+					visibilityById.set(id, rect.height);
+				}
+
+				let bestId: number | null = null;
+				let bestHeight = 0;
+
+				for (const [id, height] of visibilityById) {
+					if (height > bestHeight) {
+						bestHeight = height;
+						bestId = id;
+					}
+				}
+				if (bestHeight !== 0 && bestId !== currentHighlightedId) {
+					currentHighlightedId = bestId;
+					console.log('image', bestId, "is now the most visible")
+				}
+			},
+			{ root: container, threshold: [0, 0.25, 0.5, 0.75, 1] }
+		);
+
+		const images = container.querySelectorAll<HTMLImageElement>('[data-photo-id]');
+		images.forEach((img) => observer.observe(img));
+		return () => observer.disconnect();
+	}
 </script>
 
 <svelte:head>
-<title>{data.storyDetails.title} | photomap</title>
+	<title>{data.storyDetails.title} | photomap</title>
 </svelte:head>
 
-
-<div class="h-[calc(100dvh-4rem)] overflow-y-auto p-4">
-	<Button href={`/project/${page.params.slug}`} variant='ghost'>← Back to project</Button>
+<div class="h-[calc(100dvh-4rem)] overflow-y-auto p-4" bind:this={storyContainer}>
+	<Button href={`/project/${page.params.slug}`} variant="ghost">← Back to project</Button>
 	<h1 class="mb-4 text-4xl font-bold">{data.storyDetails.title}</h1>
 	{#each data.storyBlocks as item}
 		{#if item.story_item.photo}
-			<div class="relative group">
+			<div class="group relative">
 				<img
 					src={photos.find((p) => p.id === item.story_item.photo)?.fullsizeUrl ??
 						photos.find((p) => p.id === item.story_item.photo)?.thumbnailUrl}
 					alt={item.story_item.photoCaption ?? 'Story photo'}
 					class="mt-4 block w-full"
 					loading="lazy"
+					data-photo-id={item.story_item.photo}
 					id={`story-photo-${item.story_item.photo}`}
 				/>
 				<Button
 					variant="secondary"
 					size="icon"
-					class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+					class="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100"
 					onclick={() => openLightBox(photos?.find((p) => p.id === item.story_item.photo) as Photo)}
 				>
 					<Maximize2 />

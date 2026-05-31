@@ -49,7 +49,7 @@
 		};
 	};
 
-	async function createThumbnail(file: File, maxSize = 512) {
+	async function resizeImage(file: File, maxSize = 512) {
 		if (!file.type.startsWith('image/')) {
 			return file;
 		}
@@ -63,15 +63,12 @@
 				img.onerror = () => reject(new Error('Unable to load image for thumbnail generation'));
 				img.src = imageUrl;
 			});
-
 			const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
 			const width = Math.max(1, Math.round(image.width * scale));
 			const height = Math.max(1, Math.round(image.height * scale));
-
 			const canvas = document.createElement('canvas');
 			canvas.width = width;
 			canvas.height = height;
-
 			const context = canvas.getContext('2d');
 			if (!context) {
 				return file;
@@ -168,8 +165,8 @@
 							return;
 						}
 
-						const thumbnailFile = await createThumbnail(file);
-						const fullSizeFile = await createThumbnail(file, 3000); //make it not as stupidly large - my phone images are like 6mb each
+						const thumbnailFile = await resizeImage(file);
+						const fullSizeFile = await resizeImage(file, 3000); //make it not as stupidly large - my phone images are like 6mb each
 						console.log(
 							'original file size:',
 							file.size,
