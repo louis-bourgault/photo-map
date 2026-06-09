@@ -109,7 +109,7 @@
 </div>
 
 {#if lightBox.open && lightBox.selectedPhoto}
-<div class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+<div class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-100000000">
   <Button class="absolute top-4 right-4" variant="secondary" onclick={closeLightBox}>Close</Button>
   <img src={lightBox.selectedPhoto.fullsizeUrl || lightBox.selectedPhoto.thumbnailUrl} alt={lightBox.selectedPhoto.filename} class="max-w-full max-h-full" />
 </div>
