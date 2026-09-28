@@ -11,6 +11,7 @@
 	} from '$lib/mapstore.svelte.js';
 	import type { Photo } from '$lib/mapstore.svelte.js';
 	import { mode } from 'mode-watcher';
+	import { getEmbedPreferences } from '$lib/embed';
 	import Button from '$lib/components/ui/button/button.svelte';
 
 	function scrollToPhoto(photoID: number) {
@@ -27,6 +28,7 @@
 		return cleanup;
 	});
 	let { data } = $props();
+	let embed = $derived(getEmbedPreferences(page.url.searchParams, true));
 	import { Maximize2 } from '@lucide/svelte';
 	const visibilityById = new Map<number, number>();
 	function observeStoryImages(container: HTMLElement) {
@@ -60,8 +62,15 @@
 	<title>{data.storyDetails.title} | photomap</title>
 </svelte:head>
 
-<div class="h-[calc(100dvh-4rem)] overflow-y-auto p-4" bind:this={storyContainer}>
-	<Button href={`/project/${page.params.slug}`} variant="ghost">← Back to project</Button>
+<div
+	class={embed.enabled
+		? 'embed-story h-full overflow-y-auto p-4 sm:p-8'
+		: 'h-[calc(100dvh-4rem)] overflow-y-auto p-4'}
+	bind:this={storyContainer}
+>
+	{#if !embed.enabled}
+		<Button href={`/project/${page.params.slug}`} variant="ghost">← Back to project</Button>
+	{/if}
 	<h1 class="mb-4 text-4xl font-bold">{data.storyDetails.title}</h1>
 	{#each data.storyBlocks as item}
 		{#if item.story_item.photo}
@@ -85,10 +94,12 @@
 					<span class="sr-only">View full size</span>
 				</Button>
 
-				<p class="text-secondary-foreground">{item.story_item.photoCaption}</p>
+				<p class={embed.enabled ? 'embed-caption' : 'text-secondary-foreground'}>
+					{item.story_item.photoCaption}
+				</p>
 			</div>
 		{:else if item.safeHtml}
-			<div class="prose {mode.current === 'dark' ? 'prose-invert' : ''} mb-4">
+			<div class="prose {!embed.enabled && mode.current === 'dark' ? 'prose-invert' : ''} mb-4">
 				{@html item.safeHtml}
 			</div>
 		{/if}
@@ -96,6 +107,38 @@
 </div>
 
 <style>
+	.embed-story {
+		background: var(--embed-background);
+		color: var(--embed-foreground);
+	}
+	.embed-story h1 {
+		font-family: var(--embed-heading-font);
+	}
+	.embed-caption {
+		color: var(--embed-muted);
+	}
+	:global(.embed-story .prose) {
+		--tw-prose-body: var(--embed-foreground);
+		--tw-prose-headings: var(--embed-foreground);
+		--tw-prose-lead: var(--embed-foreground);
+		--tw-prose-links: var(--embed-accent);
+		--tw-prose-bold: var(--embed-foreground);
+		--tw-prose-counters: var(--embed-muted);
+		--tw-prose-bullets: var(--embed-muted);
+		--tw-prose-captions: var(--embed-muted);
+		--tw-prose-quotes: var(--embed-foreground);
+		--tw-prose-quote-borders: var(--embed-border);
+		--tw-prose-hr: var(--embed-border);
+		--tw-prose-th-borders: var(--embed-border);
+		--tw-prose-td-borders: var(--embed-border);
+		max-width: none;
+	}
+	:global(.embed-story .prose h1),
+	:global(.embed-story .prose h2),
+	:global(.embed-story .prose h3),
+	:global(.embed-story .prose h4) {
+		font-family: var(--embed-heading-font);
+	}
 	:global(.prose h1) {
 		font-size: 2em;
 	}

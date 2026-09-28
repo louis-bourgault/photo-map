@@ -3,7 +3,10 @@
 	import ModeSwitch from '$lib/components/mode-switch.svelte';
 	import { onDestroy, onMount } from 'svelte';
 	import { env } from '$env/dynamic/public';
+	import { browser } from '$app/environment';
 	import 'mapbox-gl/dist/mapbox-gl.css';
+	import { page } from '$app/state';
+	import { embedStyle, getEmbedPreferences, googleFontStylesheet } from '$lib/embed';
 	let { children, data } = $props();
 	import {
 		setProjectID,
@@ -16,12 +19,55 @@
 	} from '$lib/mapstore.svelte.js';
 	import Button from '$lib/components/ui/button/button.svelte';
 
-	let mapContainer!: HTMLDivElement;
+	let mapContainer = $state<HTMLDivElement>();
 	let map: any = $state();
 	let mapboxgl: any;
 
 	let mapWidth = $state();
 	let resizeCallback: any;
+	let embed = $derived(
+		getEmbedPreferences(page.url.searchParams, page.route.id === '/project/[slug]/[storyID]')
+	);
+	let bodyFontStylesheet = $derived(googleFontStylesheet(embed.fontUrl ? null : embed.font));
+	let headingFontStylesheet = $derived(
+		googleFontStylesheet(embed.headingFontUrl ? null : embed.headingFont)
+	);
+
+	function loadFont(family: string, url: string) {
+		const escapedUrl = url.replace(/["\\\n\r]/g, '\\$&');
+		const font = new FontFace(family, `url("${escapedUrl}")`);
+		let active = true;
+		font
+			.load()
+			.then((loaded) => {
+				if (active) document.fonts.add(loaded);
+			})
+			.catch(() => {});
+		return () => {
+			active = false;
+			document.fonts.delete(font);
+		};
+	}
+
+	$effect(() => {
+		if (!browser || !embed.enabled) return;
+		const unloadBody = embed.fontUrl ? loadFont('Embed Body', embed.fontUrl) : undefined;
+		const unloadHeading = embed.headingFontUrl
+			? loadFont('Embed Heading', embed.headingFontUrl)
+			: undefined;
+		return () => {
+			unloadBody?.();
+			unloadHeading?.();
+		};
+	});
+
+	$effect(() => {
+		const markerColor = embed.enabled ? embed.accent : '#177f62';
+		if (!map?.isStyleLoaded()) return;
+		for (const layer of ['photo-clusters', 'photo-points']) {
+			if (map.getLayer(layer)) map.setPaintProperty(layer, 'circle-color', markerColor);
+		}
+	});
 
 	$effect(() => {
 		if (mapWidth) {
@@ -102,7 +148,7 @@
 		}
 
 		map = new mapboxgl.Map({
-			container: mapContainer,
+			container: mapContainer!,
 			style: 'mapbox://styles/mapbox/satellite-streets-v12',
 			bounds: [
 				[mapboxBounds?.minLng, mapboxBounds?.minLat],
@@ -124,7 +170,7 @@
 				source: 'photos',
 				filter: ['has', 'point_count'],
 				paint: {
-					'circle-color': '#177f62',
+					'circle-color': embed.enabled ? embed.accent : '#177f62',
 					'circle-radius': ['step', ['get', 'point_count'], 18, 50, 24, 250, 30],
 					'circle-stroke-color': '#fff',
 					'circle-stroke-width': 2
@@ -144,7 +190,7 @@
 				source: 'photos',
 				filter: ['!', ['has', 'point_count']],
 				paint: {
-					'circle-color': '#177f62',
+					'circle-color': embed.enabled ? embed.accent : '#177f62',
 					'circle-radius': ['interpolate', ['linear'], ['get', 'visibleRatio'], 0, 8, 1, 18],
 					'circle-stroke-color': '#fff',
 					'circle-stroke-width': 2
@@ -178,24 +224,49 @@
 	});
 </script>
 
-<header class="width-full border-b">
-	<div class="flex h-16 items-center justify-between p-4">
-		<a class=" text-secondary-foreground" href="/dashboard">← Dashboard</a>
-		<p class="text-bold text-lg">{data.project.name}</p>
-		<ModeSwitch />
-	</div>
-</header>
+<svelte:head>
+	{#if embed.enabled && (bodyFontStylesheet || headingFontStylesheet)}
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+	{/if}
+	{#if bodyFontStylesheet}<link rel="stylesheet" href={bodyFontStylesheet} />{/if}
+	{#if headingFontStylesheet && headingFontStylesheet !== bodyFontStylesheet}
+		<link rel="stylesheet" href={headingFontStylesheet} />
+	{/if}
+</svelte:head>
 
-<div class="h-[calc(100vh-4rem)] w-full">
-	<Resizable.PaneGroup direction="horizontal" class="h-full w-full">
-		<Resizable.Pane minSize={25} defaultSize={50}>{@render children()}</Resizable.Pane>
-		<Resizable.Handle withHandle />
-		<Resizable.Pane minSize={25} defaultSize={50}>
-			<div class="map-wrapper h-full w-full" bind:clientWidth={mapWidth}>
+{#if !embed.enabled}
+	<header class="width-full border-b">
+		<div class="flex h-16 items-center justify-between p-4">
+			<a class=" text-secondary-foreground" href="/dashboard">← Dashboard</a>
+			<p class="text-bold text-lg">{data.project.name}</p>
+			<ModeSwitch />
+		</div>
+	</header>
+{/if}
+
+<div
+	class={embed.enabled ? 'embed-shell w-full' : 'h-[calc(100vh-4rem)] w-full'}
+	style={embed.enabled ? embedStyle(embed) : undefined}
+>
+	{#if embed.enabled}
+		<div class="embed-grid">
+			<div class="embed-article">{@render children()}</div>
+			<div class="embed-map" bind:clientWidth={mapWidth}>
 				<div bind:this={mapContainer} class="map-container h-full w-full"></div>
 			</div>
-		</Resizable.Pane>
-	</Resizable.PaneGroup>
+		</div>
+	{:else}
+		<Resizable.PaneGroup direction="horizontal" class="h-full w-full">
+			<Resizable.Pane minSize={25} defaultSize={50}>{@render children()}</Resizable.Pane>
+			<Resizable.Handle withHandle />
+			<Resizable.Pane minSize={25} defaultSize={50}>
+				<div class="map-wrapper h-full w-full" bind:clientWidth={mapWidth}>
+					<div bind:this={mapContainer} class="map-container h-full w-full"></div>
+				</div>
+			</Resizable.Pane>
+		</Resizable.PaneGroup>
+	{/if}
 </div>
 
 {#if lightBox.open && lightBox.selectedPhoto}
@@ -209,3 +280,35 @@
 		/>
 	</div>
 {/if}
+
+<style>
+	.embed-shell {
+		height: 100dvh;
+		background: var(--embed-background);
+		color: var(--embed-foreground);
+		font-family: var(--embed-body-font);
+	}
+	.embed-grid {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		height: 100%;
+	}
+	.embed-article,
+	.embed-map {
+		min-width: 0;
+		min-height: 0;
+	}
+	.embed-map {
+		border-left: 1px solid var(--embed-border);
+	}
+	@media (max-width: 700px) {
+		.embed-grid {
+			grid-template-columns: 1fr;
+			grid-template-rows: minmax(0, 1fr) min(35%, 240px);
+		}
+		.embed-map {
+			border-left: 0;
+			border-top: 1px solid var(--embed-border);
+		}
+	}
+</style>
