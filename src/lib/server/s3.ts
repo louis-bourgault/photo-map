@@ -1,15 +1,15 @@
-import { GetObjectCommand, S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
-import { BACKBLAZE_APPLICATION_KEY, BACKBLAZE_KEY_ID, S3_REGION, S3_ENDPOINT, S3_BUCKET_NAME } from '$env/static/private';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { env } from '$env/dynamic/private';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { PUBLIC_S3_PUBLIC_URL } from '$env/static/public';
+import { env as publicEnv } from '$env/dynamic/public';
 
 export const s3Client = new S3Client({
-	region: S3_REGION,
-	endpoint: S3_ENDPOINT,
+	region: env.S3_REGION!,
+	endpoint: env.S3_ENDPOINT!,
 	forcePathStyle: true,
 	credentials: {
-		accessKeyId: BACKBLAZE_KEY_ID,
-		secretAccessKey: BACKBLAZE_APPLICATION_KEY
+		accessKeyId: env.BACKBLAZE_KEY_ID!,
+		secretAccessKey: env.BACKBLAZE_APPLICATION_KEY!
 	}
 });
 
@@ -20,12 +20,12 @@ export async function createPresignedDownloadURL(objectKey: string) {
 	// 	Key: objectKey
 	// });
 	// return await getSignedUrl(s3Client, command, { expiresIn: 3600 });
-	return `${PUBLIC_S3_PUBLIC_URL}/${objectKey}`;
+	return `${publicEnv.PUBLIC_S3_PUBLIC_URL}/${objectKey}`;
 }
 
 export async function deleteObject(objectKey: string) {
 	console.log('deleting', objectKey);
-	const bucketName = S3_BUCKET_NAME;
+	const bucketName = env.S3_BUCKET_NAME!;
 	const command = new DeleteObjectCommand({
 		Bucket: bucketName,
 		Key: objectKey
@@ -34,9 +34,9 @@ export async function deleteObject(objectKey: string) {
 }
 
 export async function createPresignedUploadURL(objectKey: string) {
-	const bucketName = S3_BUCKET_NAME;
+	const bucketName = env.S3_BUCKET_NAME!;
 
-	let command = new PutObjectCommand({
+	const command = new PutObjectCommand({
 		Bucket: bucketName,
 		Key: objectKey
 	});

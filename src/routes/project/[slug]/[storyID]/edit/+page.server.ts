@@ -1,14 +1,15 @@
 import { db } from '$lib/server/db';
-import { project, story, storyItem } from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
+import { photo, project, story, storyItem } from '$lib/server/db/schema';
+import { and, eq } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
+import { toClientPhoto } from '$lib/server/photos';
 
 export async function load({ params, locals }) {
 	if (!locals.user) {
 		throw error(401, 'Unauthorized');
 	}
 
-	const [rows, projectInfo] = await Promise.all([
+	const [rows, projectInfo, photoRows] = await Promise.all([
 		db
 			.select({
 				storyId: story.id,
@@ -24,10 +25,19 @@ export async function load({ params, locals }) {
 			})
 			.from(story)
 			.leftJoin(storyItem, eq(storyItem.story, story.id))
-			.where(eq(story.slug, params.storyID))
+			.where(and(eq(story.slug, params.storyID), eq(story.projectID, params.slug)))
 			.orderBy(storyItem.indexInStory)
 			.execute(),
-		db.select().from(project).where(eq(project.id, params.slug))
+		db.select().from(project).where(eq(project.id, params.slug)),
+		db
+			.select({
+				id: photo.id,
+				filename: photo.filename,
+				latitude: photo.latitude,
+				longitude: photo.longitude
+			})
+			.from(photo)
+			.where(eq(photo.projectID, params.slug))
 	]);
 
 	if (projectInfo.length === 0) {
@@ -61,5 +71,9 @@ export async function load({ params, locals }) {
 			itemType: row.itemType! as 'photo' | 'text'
 		}));
 
-	return { storyDetails, storyBlocks };
+	return {
+		storyDetails,
+		storyBlocks,
+		processedPhotos: photoRows.map((row) => toClientPhoto(row, params.slug))
+	};
 }

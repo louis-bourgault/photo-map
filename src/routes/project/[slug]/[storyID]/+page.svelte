@@ -1,12 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
-	import * as Card from '$lib/components/ui/card/index.js';
 	import {
 		photos,
-		getFullSizeUrl,
-		highlightedPhoto,
 		initStory,
+		initPhotos,
 		openLightBox,
 		setFullURL,
 		setHighlightedPhotos
@@ -21,28 +19,16 @@
 	}
 	let storyContainer: HTMLDivElement;
 	onMount(() => {
+		initPhotos(data.processedPhotos);
+		for (const photo of data.photoPresigned) setFullURL(photo);
+		initStory(data.storyBlocks, scrollToPhoto);
 		if (!storyContainer) return;
 		const cleanup = observeStoryImages(storyContainer);
 		return cleanup;
 	});
 	let { data } = $props();
-	import { marked } from 'marked';
 	import { Maximize2 } from '@lucide/svelte';
-	let storyInitialized = false;
-
-	$effect(() => {
-		if (storyInitialized || photos.length === 0) return;
-
-		storyInitialized = true;
-
-		for (const photo of data.photoPresigned) {
-			setFullURL(photo);
-		}
-
-		initStory(data.storyBlocks, scrollToPhoto);
-	});
 	const visibilityById = new Map<number, number>();
-	let currentHighlightedId: number | null = null;
 	function observeStoryImages(container: HTMLElement) {
 		const observer = new IntersectionObserver(
 			(entries) => {
@@ -101,9 +87,9 @@
 
 				<p class="text-secondary-foreground">{item.story_item.photoCaption}</p>
 			</div>
-		{:else if item.story_item.markdownContent}
+		{:else if item.safeHtml}
 			<div class="prose {mode.current === 'dark' ? 'prose-invert' : ''} mb-4">
-				{@html marked.parse(item.story_item.markdownContent)}
+				{@html item.safeHtml}
 			</div>
 		{/if}
 	{/each}

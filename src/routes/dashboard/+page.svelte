@@ -7,11 +7,6 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { authClient } from '$lib/authClient';
 	let { data }: { data: PageServerData } = $props();
-
-	let projects = $state(data.projects);
-
-	
-	
 </script>
 
 <svelte:head>
@@ -59,6 +54,8 @@
 		{/each}
 	</div>
 	{#if data.projects.length === 0}
-		<p class="mt-4 text-center text-gray-500">A project is a grouping of photos on a map. Create one to get started!</p>
+		<p class="mt-4 text-center text-gray-500">
+			A project is a grouping of photos on a map. Create one to get started!
+		</p>
 	{/if}
 </div>

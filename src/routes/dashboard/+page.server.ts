@@ -60,12 +60,13 @@ export const actions: Actions = {
 		if (proj.userID !== userId) {
 			return redirect(302, '/dashboard');
 		}
-		let deletePhotoPromises = [];
-		for (const photo of photos) {
-			deletePhotoPromises.push(deleteObject(`photos/${proj.id}/${photo.filename}/full`));
-			deletePhotoPromises.push(deleteObject(`photos/${proj.id}/${photo.filename}/thumb`));
+		const objectKeys = photos.flatMap((item) => [
+			`photos/${proj.id}/${item.filename}/full`,
+			`photos/${proj.id}/${item.filename}/thumb`
+		]);
+		for (let index = 0; index < objectKeys.length; index += 10) {
+			await Promise.all(objectKeys.slice(index, index + 10).map((key) => deleteObject(key)));
 		}
-		await Promise.all(deletePhotoPromises);
 
 		await db.delete(project).where(eq(project.id, id)).execute();
 		console.log('Deleted project with id:', id);

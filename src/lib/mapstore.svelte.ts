@@ -1,5 +1,5 @@
 export let photos: Array<Photo> = $state([]);
-import { PUBLIC_S3_PUBLIC_URL } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 
 export let projectID: string = '';
 export let stories: Array<{ id: string; title: string; slug: string; projectID: string }> = $state(
@@ -27,7 +27,7 @@ function setMapBounds() {
 		mapboxBounds.minLng = 93.0;
 		mapboxBounds.maxLng = 153.0;
 		return;
-	};
+	}
 	const lats = filteredPhotos.map((p) => parseFloat(p.latitude));
 	const lngs = filteredPhotos.map((p) => parseFloat(p.longitude));
 	let minLat = Math.min(...lats);
@@ -56,15 +56,16 @@ let scrollFunction: Function | null = null;
 export let map: any;
 
 export function setHighlightedPhotos(visiblePhotos: { photoId: number; visibleRatio: number }[]) {
-    let importantPhotos = visiblePhotos.filter((p) => p.visibleRatio > 0);
-    if (!(importantPhotos.length > 0)) return;
-    importantPhotos = importantPhotos.slice(0, 5);
-    importantPhotos.forEach((photo) => {
-        const p = filteredPhotos.find((p) => p.id === photo.photoId);
-        if (p) {
-            p.visibleRatio = photo.visibleRatio;
-        }
-    });
+	for (const photo of filteredPhotos) photo.visibleRatio = 0;
+	let importantPhotos = visiblePhotos.filter((p) => p.visibleRatio > 0);
+	if (!(importantPhotos.length > 0)) return;
+	importantPhotos = importantPhotos.slice(0, 5);
+	importantPhotos.forEach((photo) => {
+		const p = filteredPhotos.find((p) => p.id === photo.photoId);
+		if (p) {
+			p.visibleRatio = photo.visibleRatio;
+		}
+	});
 }
 
 export let lightBox = $state({
@@ -141,7 +142,7 @@ const fullsizeRequests = new Map<number, Promise<string>>();
 export async function getFullSizeUrl(photo: Photo) {
 	//this si a rather redundant function since we don't need presigned urls anymore since its a public bucket. I can't be bothered refactoring.
 	if (photo.fullsizeUrl) return photo.fullsizeUrl;
-	const url = `${PUBLIC_S3_PUBLIC_URL}/photos/${projectID}/${photo.filename}/full`;
+	const url = `${env.PUBLIC_S3_PUBLIC_URL}/photos/${projectID}/${photo.filename}/full`;
 	console.log('Setting fullsize URL for photo', photo.id, 'to', url);
 	photo.fullsizeUrl = url;
 	return url;
@@ -197,6 +198,7 @@ export async function clearStoryFilters() {
 export async function deletePhoto(photo: Photo) {
 	let photoInFiltered: boolean = false;
 	const index = photos.findIndex((p) => p.id === photo.id);
+	const removedPhoto = index === -1 ? null : photos[index];
 	if (index !== -1) {
 		photos.splice(index, 1);
 	}
@@ -211,9 +213,10 @@ export async function deletePhoto(photo: Photo) {
 	});
 	if (resp.status !== 204) {
 		console.error('Failed to delete photo with id', photo.id);
-		photos.push(photos[index]);
-		if (photoInFiltered) {
-			filteredPhotos.push(photos[index]);
+		if (removedPhoto) {
+			photos.splice(Math.min(index, photos.length), 0, removedPhoto);
+			if (photoInFiltered) filteredPhotos.push(removedPhoto);
 		}
 	}
+	setMapBounds();
 }

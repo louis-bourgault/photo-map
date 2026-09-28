@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
-	import { photos, getFullSizeUrl } from '$lib/mapstore.svelte.js';
+	import { photos, getFullSizeUrl, initPhotos } from '$lib/mapstore.svelte.js';
 	import Textarea from '$lib/components/ui/textarea/textarea.svelte';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	let { data } = $props();
@@ -20,6 +20,10 @@
 	};
 	let storyBlocks = $state<StoryItem[]>([]);
 	let selectedChangePhotoID: number | null = $state(null);
+	onMount(() => {
+		initPhotos(data.processedPhotos);
+		storyBlocks = data.storyBlocks.map((block: RawStoryItem) => normalizeStoryItem(block));
+	});
 	import Input from '$lib/components/ui/input/input.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import Label from '$lib/components/ui/label/label.svelte';
@@ -31,9 +35,6 @@
 		};
 	}
 
-	$effect(() => {
-		storyBlocks = data.storyBlocks.map((block: RawStoryItem) => normalizeStoryItem(block));
-	});
 	//i dont think we actually need the full size ones now
 
 	// onMount(() => {
@@ -48,7 +49,7 @@
 	// 		}
 	// 	});
 	// });
-	
+
 	function getPhotoById(id: number | null) {
 		if (!id) return undefined;
 		return data.processedPhotos.find((p) => p.id === id) ?? photos.find((p) => p.id === id);
@@ -109,13 +110,17 @@
 			block.indexInStory = index;
 		});
 		try {
-			await fetch(`/project/${page.params.slug}/${page.params.storyID}/edit/save/`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({ storyBlocks })
-			});
+			const response = await fetch(
+				`/project/${page.params.slug}/${page.params.storyID}/edit/save/`,
+				{
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({ storyBlocks })
+				}
+			);
+			if (!response.ok) throw new Error(await response.text());
 		} finally {
 			saving = false;
 		}
@@ -125,9 +130,8 @@
 </script>
 
 <svelte:head>
-<title>{data.storyDetails.title} | edit | photomap</title>
+	<title>{data.storyDetails.title} | edit | photomap</title>
 </svelte:head>
-
 
 <div class="h-[calc(100dvh-4rem)] overflow-y-auto p-4 sm:p-6">
 	<div class="mx-auto flex w-full max-w-3xl flex-col gap-4">
@@ -140,7 +144,7 @@
 				>{saving ? 'Saving...' : 'Save Story'}</Button
 			>
 		</div>
-		<h1 class='text-2xl'>{data.storyDetails.title}</h1>
+		<h1 class="text-2xl">{data.storyDetails.title}</h1>
 		{#each storyBlocks as item, index}
 			<Card.Root class="w-full">
 				{#if item.itemType === 'photo'}
@@ -154,6 +158,8 @@
 									getPhotoById(item.photo)?.thumbnailUrl}
 								alt="a thing"
 								class="mb-4 w-full rounded-md border border-border/60 bg-muted/20 object-contain"
+								loading="lazy"
+								decoding="async"
 							/>
 						{:else}
 							<p class="mb-4 text-sm text-muted-foreground">Photo not found, add one!</p>
@@ -185,7 +191,13 @@
 												? 'border-primary'
 												: ''}"
 										>
-											<img src={photo.thumbnailUrl} alt={photo.filename} class="cursor-pointer" />
+											<img
+												src={photo.thumbnailUrl}
+												alt={photo.filename}
+												class="cursor-pointer"
+												loading="lazy"
+												decoding="async"
+											/>
 										</button>
 									{/each}
 								</div>

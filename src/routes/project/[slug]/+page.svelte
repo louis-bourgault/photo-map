@@ -6,17 +6,14 @@
 	let { data } = $props();
 	import {
 		photos,
-		lightBox,
 		openLightBox,
-		closeLightBox,
-		initStories,
 		clearStoryFilters,
 		deletePhoto,
-		type Photo,
 		filteredPhotos
 	} from '$lib/mapstore.svelte.js';
+	import { initPhotos } from '$lib/mapstore.svelte.js';
 
-	let stories = $state([...data.stories]);
+	let stories = $state<typeof data.stories>([]);
 
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import Input from '$lib/components/ui/input/input.svelte';
@@ -29,6 +26,7 @@
 	let fileInput = $state<HTMLInputElement | null>(null);
 	let selectedFiles = $state<File[]>([]);
 	let isUploading = $state(false);
+	let visiblePhotoCount = $state(60);
 	let uploadButtonDisabled = $derived(selectedFiles.length === 0 || isUploading);
 
 	function handleFileChange(event: Event) {
@@ -37,11 +35,13 @@
 	}
 
 	onMount(() => {
+		stories = data.stories;
+		initPhotos(data.processedPhotos);
 		clearStoryFilters();
 	});
 
 	const deleteStory = () => {
-		return async ({ result }) => {
+		return async ({ result }: { result: { type: string; data?: { storyID?: string } } }) => {
 			if (result.type === 'success') {
 				const deletedStoryID = result.data?.storyID;
 				stories = stories.filter((story) => story.id !== deletedStoryID);
@@ -100,6 +100,21 @@
 		}
 	}
 
+	async function runWithConcurrency<T>(
+		items: T[],
+		limit: number,
+		worker: (item: T) => Promise<void>
+	) {
+		let next = 0;
+		async function run() {
+			while (next < items.length) {
+				const item = items[next++];
+				await worker(item);
+			}
+		}
+		await Promise.all(Array.from({ length: Math.min(limit, items.length) }, run));
+	}
+
 	const uploadFiles = async ({ formData, cancel }: { formData: FormData; cancel: () => void }) => {
 		const files = selectedFiles;
 		if (files.length === 0) {
@@ -132,7 +147,7 @@
 		}
 
 		if (photoPayloads.length === 0) {
-			fileInput?.value && (fileInput.value = '');
+			if (fileInput) fileInput.value = '';
 			setTimeout(() => (noExifError = false), 5000);
 			cancel();
 			return;
@@ -158,62 +173,56 @@
 					}>;
 				};
 
-				await Promise.all(
-					uploads.map(async (upload) => {
-						const file = files[upload.clientIndex];
-						if (!file) {
-							return;
-						}
+				await runWithConcurrency(uploads, 3, async (upload) => {
+					const file = files[upload.clientIndex];
+					if (!file) {
+						return;
+					}
 
-						const thumbnailFile = await resizeImage(file);
-						const fullSizeFile = await resizeImage(file, 3000); //make it not as stupidly large - my phone images are like 6mb each
-						console.log(
-							'original file size:',
-							file.size,
-							'thumbnail size:',
-							thumbnailFile.size,
-							'full size (resized) file size:',
-							fullSizeFile.size
-						);
+					const thumbnailFile = await resizeImage(file);
+					const fullSizeFile = await resizeImage(file, 3000); //make it not as stupidly large - my phone images are like 6mb each
+					console.log(
+						'original file size:',
+						file.size,
+						'thumbnail size:',
+						thumbnailFile.size,
+						'full size (resized) file size:',
+						fullSizeFile.size
+					);
 
+					try {
 						const [thumbResponse, fullResponse] = await Promise.all([
-							fetch(upload.thumbURL, {
-								method: 'PUT',
-								body: thumbnailFile
-							}),
-							fetch(upload.fullURL, {
-								method: 'PUT',
-								body: fullSizeFile
-							})
+							fetch(upload.thumbURL, { method: 'PUT', body: thumbnailFile }),
+							fetch(upload.fullURL, { method: 'PUT', body: fullSizeFile })
 						]);
+						if (!thumbResponse.ok || !fullResponse.ok) throw new Error('Object upload failed');
+					} catch (error) {
+						await fetch(`/api/photo?id=${upload.photoID}`, { method: 'DELETE' });
+						throw error;
+					}
+					console.log('Upload successful, updating UI with new photo');
 
-						if (!thumbResponse.ok || !fullResponse.ok) {
-							throw new Error('Upload failed after the server created the photo record');
-						}
-						console.log('Upload successful, updating UI with new photo');
+					const resp = await fetch('/api/presigned?res=thumb', {
+						method: 'POST',
+						headers: { 'content-type': 'application/json' },
+						body: JSON.stringify({ projectID: data.project.id, filename: upload.filename })
+					});
+					const { url } = await resp.json();
 
-						const resp = await fetch('/api/presigned?res=thumb', {
-							method: 'POST',
-							headers: { 'content-type': 'application/json' },
-							body: JSON.stringify({ projectID: data.project.id, filename: upload.filename })
-						});
-						const { url } = await resp.json();
-
-						const payload = photoPayloads.find((p) => p.clientIndex === upload.clientIndex);
-						let newPhoto = {
-							id: upload.photoID,
-							filename: upload.filename,
-							exif: payload ? JSON.parse(payload.exif) : {},
-							latitude: payload?.latitude ?? '',
-							longitude: payload?.longitude ?? '',
-							thumbnailUrl: url,
-							fullsizeUrl: null
-						};
-						console.log(newPhoto);
-						photos.unshift(newPhoto);
-						filteredPhotos.unshift(newPhoto);
-					})
-				);
+					const payload = photoPayloads.find((p) => p.clientIndex === upload.clientIndex);
+					let newPhoto = {
+						id: upload.photoID,
+						filename: upload.filename,
+						exif: payload ? JSON.parse(payload.exif) : {},
+						latitude: payload?.latitude ?? '',
+						longitude: payload?.longitude ?? '',
+						thumbnailUrl: url,
+						fullsizeUrl: null
+					};
+					console.log(newPhoto);
+					photos.unshift(newPhoto);
+					filteredPhotos.unshift(newPhoto);
+				});
 
 				selectedFiles = [];
 
@@ -244,7 +253,7 @@
 						There wasn't any gps information in that file, so it wasn't uploaded
 					</p>
 				{/if}
-				{#each photos as photo (photo.id)}
+				{#each photos.slice(0, visiblePhotoCount) as photo (photo.id)}
 					<div class="group relative">
 						<button
 							type="button"
@@ -256,6 +265,8 @@
 								src={photo.thumbnailUrl}
 								alt={photo.filename}
 								class="aspect-square object-cover"
+								loading="lazy"
+								decoding="async"
 							/>
 						</button>
 						{#if data.user && data.project.userID === data.user.id}
@@ -274,6 +285,13 @@
 					</div>
 				{/each}
 			</div>
+			{#if visiblePhotoCount < photos.length}
+				<div class="mt-4 flex justify-center">
+					<Button variant="outline" onclick={() => (visiblePhotoCount += 60)}>
+						Load more photos
+					</Button>
+				</div>
+			{/if}
 			{#if data.user && data.user.id === data.project.userID}
 				<p>You own this project!</p>
 				<form

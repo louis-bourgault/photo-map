@@ -32,6 +32,7 @@
 		"@sveltejs/vite-plugin-svelte": "^7.0.0",
 		"@tailwindcss/vite": "^4.2.2",
 		"@types/node": "^24",
+		"@types/sanitize-html": "^2.16.1",
 		"better-auth": "~1.4.21",
 		"bits-ui": "^2.18.1",
 		"clsx": "^2.1.1",
@@ -64,6 +65,7 @@
 		"exifreader": "^4.39.1",
 		"mapbox-gl": "^3.24.0",
 		"marked": "^18.0.4",
-		"mode-watcher": "^1.1.0"
+		"mode-watcher": "^1.1.0",
+		"sanitize-html": "^2.17.7"
 	}
 }

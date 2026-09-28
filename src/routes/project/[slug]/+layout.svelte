@@ -1,31 +1,24 @@
 <script lang="ts">
 	import * as Resizable from '$lib/components/ui/resizable/index.js';
 	import ModeSwitch from '$lib/components/mode-switch.svelte';
-	import Marker from '$lib/components/marker.svelte';
 	import { onDestroy, onMount } from 'svelte';
-	import { PUBLIC_MAPBOX_ACCESS_TOKEN } from '$env/static/public';
-	import mapboxgl from '$lib/mapbox-gl';
-	
+	import { env } from '$env/dynamic/public';
 	import 'mapbox-gl/dist/mapbox-gl.css';
 	let { children, data } = $props();
 	import {
-		photos,
-		initPhotos,
 		setProjectID,
-		openLightBox,
 		initStories,
 		filteredPhotos,
 		lightBox,
 		closeLightBox,
-
 		handleMapPhotoClick,
 		mapboxBounds
-
 	} from '$lib/mapstore.svelte.js';
 	import Button from '$lib/components/ui/button/button.svelte';
 
 	let mapContainer!: HTMLDivElement;
-	let map: mapboxgl.Map | undefined = $state();
+	let map: any = $state();
+	let mapboxgl: any;
 
 	let mapWidth = $state();
 	let resizeCallback: any;
@@ -34,9 +27,7 @@
 		if (mapWidth) {
 			try {
 				clearTimeout(resizeCallback);
-			} catch (e) {
-				console.log('No resize callback to clear');
-			}
+			} catch {}
 			resizeCallback = setTimeout(() => {
 				map?.resize();
 			}, 50);
@@ -44,48 +35,147 @@
 		}
 	});
 
-	$effect(() => {
-		if (map && mapboxBounds && mapboxBounds.minLat !== null && mapboxBounds.minLng !== null && mapboxBounds.maxLat !== null && mapboxBounds.maxLng !== null) {
-			map.fitBounds([
-				[mapboxBounds.minLng, mapboxBounds.minLat],
-				[mapboxBounds.maxLng, mapboxBounds.maxLat]
-			], {
-				padding: 20,
-				animate: true
-			});
-		}
+	function photoGeoJson() {
+		return {
+			type: 'FeatureCollection',
+			features: filteredPhotos
+				.filter(
+					(photo) =>
+						Number.isFinite(Number(photo.longitude)) && Number.isFinite(Number(photo.latitude))
+				)
+				.map((photo) => ({
+					type: 'Feature',
+					geometry: {
+						type: 'Point',
+						coordinates: [Number(photo.longitude), Number(photo.latitude)]
+					},
+					properties: { id: photo.id, visibleRatio: photo.visibleRatio ?? 0 }
+				}))
+		};
 	}
 
-	)
+	function updateMapPhotos(data = photoGeoJson()) {
+		const source = map?.getSource('photos');
+		if (source) source.setData(data);
+	}
 
+	$effect(() => {
+		const data = photoGeoJson();
+		updateMapPhotos(data);
+	});
 
-	onMount(() => {
+	$effect(() => {
+		if (
+			map &&
+			mapboxBounds &&
+			mapboxBounds.minLat !== null &&
+			mapboxBounds.minLng !== null &&
+			mapboxBounds.maxLat !== null &&
+			mapboxBounds.maxLng !== null
+		) {
+			map.fitBounds(
+				[
+					[mapboxBounds.minLng, mapboxBounds.minLat],
+					[mapboxBounds.maxLng, mapboxBounds.maxLat]
+				],
+				{
+					padding: 20,
+					animate: true
+				}
+			);
+		}
+	});
+
+	onMount(async () => {
 		setProjectID(data.project.id);
-
-		mapboxgl.accessToken = PUBLIC_MAPBOX_ACCESS_TOKEN;
-		initPhotos(data.processedPhotos);
 		initStories(data.stories);
+		mapboxgl = (await import('mapbox-gl')).default;
+		mapboxgl.accessToken = env.PUBLIC_MAPBOX_ACCESS_TOKEN;
 
-		if (!mapboxBounds || !mapboxBounds.minLng || mapboxBounds.minLat === null || mapboxBounds.maxLng === null || mapboxBounds.maxLat === null) {
-			return
+		if (
+			mapboxBounds.minLng === null ||
+			mapboxBounds.minLat === null ||
+			mapboxBounds.maxLng === null ||
+			mapboxBounds.maxLat === null
+		) {
+			return;
 		}
 
 		map = new mapboxgl.Map({
 			container: mapContainer,
 			style: 'mapbox://styles/mapbox/satellite-streets-v12',
 			bounds: [
-				[mapboxBounds?.minLng, mapboxBounds?.minLat],[mapboxBounds?.maxLng, mapboxBounds?.maxLat]
+				[mapboxBounds?.minLng, mapboxBounds?.minLat],
+				[mapboxBounds?.maxLng, mapboxBounds?.maxLat]
 			],
-			fitBoundsOptions: {padding: 20}
+			fitBoundsOptions: { padding: 20 }
+		});
+		map.on('load', () => {
+			map.addSource('photos', {
+				type: 'geojson',
+				data: photoGeoJson(),
+				cluster: true,
+				clusterMaxZoom: 14,
+				clusterRadius: 45
+			});
+			map.addLayer({
+				id: 'photo-clusters',
+				type: 'circle',
+				source: 'photos',
+				filter: ['has', 'point_count'],
+				paint: {
+					'circle-color': '#177f62',
+					'circle-radius': ['step', ['get', 'point_count'], 18, 50, 24, 250, 30],
+					'circle-stroke-color': '#fff',
+					'circle-stroke-width': 2
+				}
+			});
+			map.addLayer({
+				id: 'photo-cluster-count',
+				type: 'symbol',
+				source: 'photos',
+				filter: ['has', 'point_count'],
+				layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 12 },
+				paint: { 'text-color': '#fff' }
+			});
+			map.addLayer({
+				id: 'photo-points',
+				type: 'circle',
+				source: 'photos',
+				filter: ['!', ['has', 'point_count']],
+				paint: {
+					'circle-color': '#177f62',
+					'circle-radius': ['interpolate', ['linear'], ['get', 'visibleRatio'], 0, 8, 1, 18],
+					'circle-stroke-color': '#fff',
+					'circle-stroke-width': 2
+				}
+			});
+
+			map.on('click', 'photo-clusters', async (event: any) => {
+				const feature = map.queryRenderedFeatures(event.point, { layers: ['photo-clusters'] })[0];
+				if (!feature) return;
+				const zoom = await map
+					.getSource('photos')
+					.getClusterExpansionZoom(feature.properties.cluster_id);
+				map.easeTo({ center: feature.geometry.coordinates, zoom });
+			});
+			map.on('click', 'photo-points', (event: any) => {
+				const id = Number(event.features?.[0]?.properties?.id);
+				const selected = filteredPhotos.find((photo) => photo.id === id);
+				if (selected) handleMapPhotoClick(selected);
+			});
+			for (const layer of ['photo-clusters', 'photo-points']) {
+				map.on('mouseenter', layer, () => (map.getCanvas().style.cursor = 'pointer'));
+				map.on('mouseleave', layer, () => (map.getCanvas().style.cursor = ''));
+			}
 		});
 
 		requestAnimationFrame(() => map?.resize());
 	});
-	
+
 	onDestroy(() => {
 		map?.remove();
-
-	})
+	});
 </script>
 
 <header class="width-full border-b">
@@ -109,23 +199,13 @@
 </div>
 
 {#if lightBox.open && lightBox.selectedPhoto}
-<div class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-100000000">
-  <Button class="absolute top-4 right-4" variant="secondary" onclick={closeLightBox}>Close</Button>
-  <img src={lightBox.selectedPhoto.fullsizeUrl || lightBox.selectedPhoto.thumbnailUrl} alt={lightBox.selectedPhoto.filename} class="max-w-full max-h-full" />
-</div>
+	<div class="bg-opacity-75 fixed inset-0 z-100000000 flex items-center justify-center bg-black">
+		<Button class="absolute top-4 right-4" variant="secondary" onclick={closeLightBox}>Close</Button
+		>
+		<img
+			src={lightBox.selectedPhoto.fullsizeUrl || lightBox.selectedPhoto.thumbnailUrl}
+			alt={lightBox.selectedPhoto.filename}
+			class="max-h-full max-w-full"
+		/>
+	</div>
 {/if}
-
-
-{#each filteredPhotos as photo (photo.id)}
-	<Marker
-		long={photo.longitude}
-		lat={photo.latitude}
-		thumb={photo.thumbnailUrl}
-		{map}
-		alt={photo.filename}
-		onclick={() => {
-			handleMapPhotoClick(photo);
-		}}
-		visibleRatio={photo.visibleRatio}
-	/>
-{/each}
