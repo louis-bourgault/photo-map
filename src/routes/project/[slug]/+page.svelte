@@ -21,7 +21,6 @@
 	import { onMount } from 'svelte';
 	import { Pencil, Trash2 } from '@lucide/svelte';
 
-	let skippedGpsCount = $state(0);
 	let uploadError = $state('');
 
 	let fileInput = $state<HTMLInputElement | null>(null);
@@ -33,7 +32,6 @@
 	function handleFileChange(event: Event) {
 		const target = event.currentTarget as HTMLInputElement;
 		selectedFiles = Array.from(target.files ?? []);
-		skippedGpsCount = 0;
 		uploadError = '';
 	}
 
@@ -125,7 +123,6 @@
 			return;
 		}
 		uploadError = '';
-		skippedGpsCount = 0;
 
 		const photoPayloads: Array<{
 			clientIndex: number;
@@ -137,9 +134,14 @@
 
 		try {
 			for (const [index, file] of files.entries()) {
-				const exifdata = await getGPSandExif(file);
+				let exifdata;
+				try {
+					exifdata = await getGPSandExif(file);
+				} catch (error) {
+					console.warn(`Skipping photo without readable GPS data: ${file.name}`, error);
+					continue;
+				}
 				if (!exifdata) {
-					skippedGpsCount += 1;
 					continue;
 				}
 
@@ -186,8 +188,7 @@
 					}>;
 				};
 				if (!Array.isArray(uploads) || uploads.length === 0) {
-					uploadError =
-						'No photos could be uploaded. Check that your photos include GPS location data.';
+					uploadError = 'No photos could be uploaded. Please try again.';
 					return;
 				}
 
@@ -269,12 +270,6 @@
 		</Tabs.List>
 		<Tabs.Content value="photos">
 			<div class="grid grid-cols-4 gap-2">
-				{#if skippedGpsCount > 0}
-					<p class="col-span-4 text-sm text-amber-700" role="status">
-						{skippedGpsCount} photo{skippedGpsCount === 1 ? '' : 's'} skipped because they did not contain
-						GPS location data.
-					</p>
-				{/if}
 				{#if uploadError}
 					<p class="col-span-4 text-sm text-destructive" role="alert">{uploadError}</p>
 				{/if}
