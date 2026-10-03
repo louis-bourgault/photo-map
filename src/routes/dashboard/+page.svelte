@@ -5,8 +5,10 @@
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
-	import { authClient } from '$lib/authClient';
+	import { resolve } from '$app/paths';
 	let { data }: { data: PageServerData } = $props();
+	let projectToDelete = $state<PageServerData['projects'][number] | null>(null);
+	let deleteDialogOpen = $state(false);
 </script>
 
 <svelte:head>
@@ -31,8 +33,8 @@
 		</Dialog.Root>
 	</div>
 
-	<div class="mt-4 grid grid-cols-3 gap-4">
-		{#each data.projects as project}
+	<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+		{#each data.projects as project (project.id)}
 			<Card.Root>
 				<Card.Header>
 					<Card.Title>{project.name}</Card.Title>
@@ -41,18 +43,41 @@
 				<Card.Content></Card.Content>
 				<Card.Footer>
 					<div class="flex w-full flex-row justify-between gap-2">
-						<a href={`/project/${project.id}/`} class="text-blue-600 hover:underline"
-							>View Project</a
+						<a
+							href={resolve('/project/[slug]', { slug: project.id })}
+							class="text-blue-600 hover:underline">View Project</a
 						>
-						<form method="post" action="?/deleteProject" use:enhance class="m-0">
-							<input type="hidden" name="projectId" value={project.id} />
-							<Button type="submit" variant="outline">Delete</Button>
-						</form>
+						<Button
+							type="button"
+							variant="outline"
+							onclick={() => {
+								projectToDelete = project;
+								deleteDialogOpen = true;
+							}}>Delete</Button
+						>
 					</div>
 				</Card.Footer>
 			</Card.Root>
 		{/each}
 	</div>
+	<Dialog.Root bind:open={deleteDialogOpen}>
+		<Dialog.Content>
+			<Dialog.Header>
+				<Dialog.Title>Delete {projectToDelete?.name}?</Dialog.Title>
+				<Dialog.Description>
+					This permanently deletes the project, its photos, and its stories. This action cannot be
+					undone.
+				</Dialog.Description>
+			</Dialog.Header>
+			<div class="flex justify-end gap-2">
+				<Button variant="outline" onclick={() => (deleteDialogOpen = false)}>Cancel</Button>
+				<form method="post" action="?/deleteProject" use:enhance class="m-0">
+					<input type="hidden" name="projectId" value={projectToDelete?.id ?? ''} />
+					<Button type="submit" variant="destructive">Delete project</Button>
+				</form>
+			</div>
+		</Dialog.Content>
+	</Dialog.Root>
 	{#if data.projects.length === 0}
 		<p class="mt-4 text-center text-gray-500">
 			A project is a grouping of photos on a map. Create one to get started!

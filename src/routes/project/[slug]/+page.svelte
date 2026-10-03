@@ -21,7 +21,7 @@
 	import { onMount } from 'svelte';
 	import { Pencil, Trash2 } from '@lucide/svelte';
 
-	let noExifError = $state(false);
+	let uploadError = $state('');
 
 	let fileInput = $state<HTMLInputElement | null>(null);
 	let selectedFiles = $state<File[]>([]);
@@ -32,6 +32,7 @@
 	function handleFileChange(event: Event) {
 		const target = event.currentTarget as HTMLInputElement;
 		selectedFiles = Array.from(target.files ?? []);
+		uploadError = '';
 	}
 
 	onMount(() => {
@@ -121,6 +122,7 @@
 			cancel();
 			return;
 		}
+		uploadError = '';
 
 		const photoPayloads: Array<{
 			clientIndex: number;
@@ -130,25 +132,37 @@
 			filename: string;
 		}> = [];
 
-		for (const [index, file] of files.entries()) {
-			const exifdata = await getGPSandExif(file);
-			if (!exifdata) {
-				noExifError = true;
-				continue;
-			}
+		try {
+			for (const [index, file] of files.entries()) {
+				let exifdata;
+				try {
+					exifdata = await getGPSandExif(file);
+				} catch (error) {
+					console.warn(`Skipping photo without readable GPS data: ${file.name}`, error);
+					continue;
+				}
+				if (!exifdata) {
+					continue;
+				}
 
-			photoPayloads.push({
-				clientIndex: index,
-				exif: JSON.stringify(exifdata.exif),
-				latitude: exifdata.latitude,
-				longitude: exifdata.longitude,
-				filename: file.name
-			});
+				photoPayloads.push({
+					clientIndex: index,
+					exif: JSON.stringify(exifdata.exif),
+					latitude: exifdata.latitude,
+					longitude: exifdata.longitude,
+					filename: file.name
+				});
+			}
+		} catch (error) {
+			console.error('Unable to read photo location data', error);
+			uploadError = 'Photos could not be checked. Please try selecting them again.';
+			cancel();
+			return;
 		}
 
 		if (photoPayloads.length === 0) {
 			if (fileInput) fileInput.value = '';
-			setTimeout(() => (noExifError = false), 5000);
+			selectedFiles = [];
 			cancel();
 			return;
 		}
@@ -161,6 +175,7 @@
 		return async ({ result }: { result: { type: string; data?: unknown } }) => {
 			try {
 				if (result.type !== 'success') {
+					uploadError = 'The upload could not be started. Please try again.';
 					return;
 				}
 				const { uploads } = result.data as {
@@ -172,6 +187,10 @@
 						filename: string;
 					}>;
 				};
+				if (!Array.isArray(uploads) || uploads.length === 0) {
+					uploadError = 'No photos could be uploaded. Please try again.';
+					return;
+				}
 
 				await runWithConcurrency(uploads, 3, async (upload) => {
 					const file = files[upload.clientIndex];
@@ -229,6 +248,9 @@
 				if (fileInput) {
 					fileInput.value = '';
 				}
+			} catch (error) {
+				console.error('Photo upload failed', error);
+				uploadError = 'Some photos could not be uploaded. Please try again.';
 			} finally {
 				isUploading = false;
 			}
@@ -248,10 +270,8 @@
 		</Tabs.List>
 		<Tabs.Content value="photos">
 			<div class="grid grid-cols-4 gap-2">
-				{#if noExifError}
-					<p class="col-span-4 text-red-500">
-						There wasn't any gps information in that file, so it wasn't uploaded
-					</p>
+				{#if uploadError}
+					<p class="col-span-4 text-sm text-destructive" role="alert">{uploadError}</p>
 				{/if}
 				{#each photos.slice(0, visiblePhotoCount) as photo (photo.id)}
 					<div class="group relative">
@@ -338,7 +358,7 @@
 						</Dialog.Root>
 					{/if}
 				</div>
-				{#each stories as story}
+				{#each stories as story (story.id)}
 					<div class="rounded border p-4">
 						<h3 class="text-xl font-semibold">{story.title}</h3>
 						<div class="flex items-center justify-between gap-4">
